@@ -12,8 +12,6 @@ workflows:
         script: flutter pub get
       - name: Build unsigned IPA
         script: |
-          flutter build ios --release --no-codesign
-          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos -archivePath $CM_BUILD_DIR/Runner.xcarchive archive CODE_SIGNING_ALLOWED=NO
-          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/Runner.xcarchive -exportOptionsPlist ios/exportOptions.plist -exportPath $CM_BUILD_DIR/ipa CODE_SIGNING_ALLOWED=NO
+          flutter build ipa --release --no-codesign --export-options-plist=ios/exportOptions.plist
     artifacts:
-      - $CM_BUILD_DIR/ipa/*.ipa
+      - build/ios/ipa/*.ipa
