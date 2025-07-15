@@ -1,0 +1,64 @@
+workflows:
+  ios-workflow:
+    name: iOS Build for AltStore (Simple)
+    environment:
+      xcode: latest
+      cocoapods: default
+      vars:
+        BUNDLE_ID: "com.example.frail"
+        EXPORT_METHOD: "development"
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Set up automatic code signing
+        script: |
+          # Configure automatic code signing
+          /usr/libexec/PlistBuddy -c "Set :method development" ios/exportOptions.plist
+          /usr/libexec/PlistBuddy -c "Set :signingStyle automatic" ios/exportOptions.plist
+          /usr/libexec/PlistBuddy -c "Delete :teamID" ios/exportOptions.plist 2>/dev/null || true
+      - name: Flutter build ipa for AltStore
+        script: |
+          flutter build ipa \
+            --release \
+            --export-options-plist=ios/exportOptions.plist \
+            --dart-define=FLUTTER_BUILD_NAME=1.0.0 \
+            --dart-define=FLUTTER_BUILD_NUMBER=1
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+      - flutter_drive.log
+    publishing:
+      email:
+        recipients:
+          - your-email@example.com 
+  android-workflow:
+    name: Android Build (APK)
+    environment:
+      flutter: stable
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build APK
+        script: flutter build apk --release
+    artifacts:
+      - build/app/outputs/flutter-apk/app-release.apk 
+  ios-unsigned:
+    name: iOS Unsigned IPA
+    environment:
+      xcode: latest
+      cocoapods: default
+      vars:
+        XCODE_WORKSPACE: "ios/Runner.xcworkspace"
+        XCODE_SCHEME: "Runner"
+    scripts:
+      - name: Get Flutter packages
+        script: flutter pub get
+      - name: Build unsigned IPA
+        script: |
+          flutter build ios --release --no-codesign
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner -configuration Release -sdk iphoneos -archivePath $CM_BUILD_DIR/Runner.xcarchive archive CODE_SIGNING_ALLOWED=NO
+          xcodebuild -exportArchive -archivePath $CM_BUILD_DIR/Runner.xcarchive -exportOptionsPlist ios/exportOptions.plist -exportPath $CM_BUILD_DIR/ipa CODE_SIGNING_ALLOWED=NO
+    artifacts:
+      - $CM_BUILD_DIR/ipa/*.ipa 
