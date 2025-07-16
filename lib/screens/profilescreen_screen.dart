@@ -80,22 +80,29 @@ class ProfileScreen extends StatelessWidget {
         const SnackBar(
           content: Text('App data reset successfully! You can now start fresh.'),
           backgroundColor: Colors.green,
+          duration: Duration(seconds: 3),
         ),
       );
 
-      // Navigate back to main screen
+      // Wait a moment for the snackbar to show, then navigate
+      await Future.delayed(const Duration(milliseconds: 500));
+
+      // Navigate back to main screen and clear all routes
       Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
     } catch (e) {
       // Close loading dialog
       Navigator.of(context).pop();
       
-      // Show error message
+      // Show error message with more details
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Error resetting app data: $e'),
+          content: Text('Error resetting app data: $e\nPlease try again or restart the app.'),
           backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
         ),
       );
+      
+      print('Reset error details: $e');
     }
   }
 

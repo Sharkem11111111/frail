@@ -1289,50 +1289,70 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
   
   // Reset all user data to fresh first-time user state
   Future<void> resetToFirstTimeUser() async {
-    final prefs = await SharedPreferences.getInstance();
-    
-    // Clear all SharedPreferences data
-    await prefs.clear();
-    
-    // Reset all in-memory data to default values
-    _resetToDefaults();
-    
-    // Save the default state
-    await saveUserData();
-    
-    // Trigger UI updates
-    onWorkoutChanged?.call();
-    onCaloriesChanged?.call();
-    onSleepChanged?.call();
-    onRankChanged?.call();
-    onEquipmentChanged?.call();
-    onProfileChanged?.call();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      
+      // Clear all SharedPreferences data
+      await prefs.clear();
+      
+      // Reset all in-memory data to default values
+      _resetToDefaults();
+      
+      // Save the default state
+      await saveUserData();
+      
+      // Force reload data to ensure consistency
+      await loadUserData();
+      
+      // Trigger UI updates
+      onWorkoutChanged?.call();
+      onCaloriesChanged?.call();
+      onSleepChanged?.call();
+      onRankChanged?.call();
+      onEquipmentChanged?.call();
+      onProfileChanged?.call();
+      
+      print('App data reset completed successfully');
+    } catch (e) {
+      print('Error during app reset: $e');
+      // If there's an error, try a more aggressive reset
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.clear();
+        _resetToDefaults();
+        print('Fallback reset completed');
+      } catch (fallbackError) {
+        print('Fallback reset also failed: $fallbackError');
+        rethrow;
+      }
+    }
   }
   
   void _resetToDefaults() {
-    // Reset workout data to default
-    currentWorkout = [
-      Exercise('Push-ups', 'Chest, Triceps, Shoulders'),
-      Exercise('Squats', 'Legs, Glutes'),
-      Exercise('Pull-ups', 'Back, Biceps'),
-      Exercise('Plank', 'Core'),
-    ];
+    try {
+      // Reset workout data to default
+      currentWorkout = [
+        Exercise('Push-ups', 'Chest, Triceps, Shoulders'),
+        Exercise('Squats', 'Legs, Glutes'),
+        Exercise('Pull-ups', 'Back, Biceps'),
+        Exercise('Plank', 'Core'),
+      ];
 
-    // Reset nutrition data
-    nutritionGoals = NutritionGoals(
-      calories: 2200,
-      protein: 150.0,
-      carbs: 220.0,
-      fat: 75.0,
-    );
-    todaysFoods = [
-      FoodEntry('Oatmeal with berries', 320, protein: 8.0, carbs: 58.0, fat: 6.0, mealType: MealType.breakfast),
-      FoodEntry('Grilled chicken salad', 450, protein: 35.0, carbs: 15.0, fat: 28.0, mealType: MealType.lunch),
-      FoodEntry('Greek yogurt', 150, protein: 15.0, carbs: 12.0, fat: 6.0, mealType: MealType.snack),
-      FoodEntry('Banana', 105, protein: 1.3, carbs: 27.0, fat: 0.4, mealType: MealType.snack),
-      FoodEntry('Almonds (1 oz)', 160, protein: 6.0, carbs: 6.0, fat: 14.0, mealType: MealType.snack),
-      FoodEntry('Protein shake', 265, protein: 25.0, carbs: 8.0, fat: 3.0, mealType: MealType.snack),
-    ];
+      // Reset nutrition data
+      nutritionGoals = NutritionGoals(
+        calories: 2200,
+        protein: 150.0,
+        carbs: 220.0,
+        fat: 75.0,
+      );
+      todaysFoods = [
+        FoodEntry('Oatmeal with berries', 320, protein: 8.0, carbs: 58.0, fat: 6.0, mealType: MealType.breakfast),
+        FoodEntry('Grilled chicken salad', 450, protein: 35.0, carbs: 15.0, fat: 28.0, mealType: MealType.lunch),
+        FoodEntry('Greek yogurt', 150, protein: 15.0, carbs: 12.0, fat: 6.0, mealType: MealType.snack),
+        FoodEntry('Banana', 105, protein: 1.3, carbs: 27.0, fat: 0.4, mealType: MealType.snack),
+        FoodEntry('Almonds (1 oz)', 160, protein: 6.0, carbs: 6.0, fat: 14.0, mealType: MealType.snack),
+        FoodEntry('Protein shake', 265, protein: 25.0, carbs: 8.0, fat: 3.0, mealType: MealType.snack),
+      ];
     
     // Reset food tracking lists
     recentFoods = [];
@@ -1423,6 +1443,15 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     hasActiveWorkout = false;
     workoutStartTime = null;
     workoutElapsedSeconds = 0;
+    exerciseProgressData = {};
+    
+    print('All data reset to defaults successfully');
+  } catch (e) {
+    print('Error in _resetToDefaults: $e');
+    // Ensure critical data is reset even if there's an error
+    currentWorkout = [Exercise('Push-ups', 'Chest, Triceps, Shoulders')];
+    nutritionGoals = NutritionGoals(calories: 2200, protein: 150.0, carbs: 220.0, fat: 75.0);
+    hasActiveWorkout = false;
     exerciseProgressData = {};
   }
 
