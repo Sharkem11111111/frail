@@ -34,8 +34,8 @@ echo -e "${YELLOW}🧹 Cleaning previous builds...${NC}"
 flutter clean
 flutter pub get
 
-# Build Flutter for iOS
-echo -e "${YELLOW}🔨 Building Flutter for iOS...${NC}"
+# Build Flutter for iOS (unsigned)
+echo -e "${YELLOW}🔨 Building Flutter for iOS (unsigned)...${NC}"
 flutter build ios --release --no-codesign
 
 # Check if we're on macOS
@@ -50,20 +50,23 @@ if ! command -v xcodebuild &> /dev/null; then
     exit 1
 fi
 
-# Archive the app
-echo -e "${YELLOW}📦 Archiving the app...${NC}"
+# Archive the app (unsigned)
+echo -e "${YELLOW}📦 Archiving the app (unsigned)...${NC}"
 xcodebuild -workspace "$WORKSPACE_PATH" \
            -scheme "$SCHEME_NAME" \
            -configuration Release \
            -archivePath "$ARCHIVE_PATH" \
+           -allowProvisioningUpdates \
+           -allowProvisioningDeviceRegistration \
            archive
 
-# Export IPA
-echo -e "${YELLOW}📤 Exporting IPA...${NC}"
+# Export IPA (unsigned)
+echo -e "${YELLOW}📤 Exporting IPA (unsigned)...${NC}"
 xcodebuild -exportArchive \
            -archivePath "$ARCHIVE_PATH" \
            -exportOptionsPlist "$EXPORT_OPTIONS_PATH" \
-           -exportPath "$OUTPUT_DIR"
+           -exportPath "$OUTPUT_DIR" \
+           -allowProvisioningUpdates
 
 # Check if IPA was created
 IPA_FILE=$(find "$OUTPUT_DIR" -name "*.ipa" | head -n 1)
@@ -75,5 +78,6 @@ else
     exit 1
 fi
 
-echo -e "${GREEN}🎉 Frail IPA build completed successfully!${NC}"
-echo -e "${BLUE}📁 IPA location: $IPA_FILE${NC}" 
+echo -e "${GREEN}🎉 Frail unsigned IPA build completed successfully!${NC}"
+echo -e "${BLUE}📁 IPA location: $IPA_FILE${NC}"
+echo -e "${YELLOW}⚠️  Note: This is an unsigned IPA for testing purposes${NC}" 

@@ -1,15 +1,15 @@
-# Frail IPA Build Guide
+# Frail Unsigned IPA Build Guide
 
-This branch (`frail-ipa-build`) is dedicated to building iOS IPA files for the Frail fitness app.
+This branch (`frail-ipa-build`) is dedicated to building unsigned iOS IPA files for the Frail fitness app. These IPAs are suitable for testing and development purposes.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
 - macOS computer (required for iOS development)
 - Xcode installed and updated
-- Apple Developer Account
-- Valid provisioning profile
-- Valid code signing certificate
+- Apple Developer Account (optional for unsigned builds)
+- Valid provisioning profile (optional for unsigned builds)
+- Valid code signing certificate (optional for unsigned builds)
 
 ### Building the IPA
 
@@ -25,9 +25,9 @@ This branch (`frail-ipa-build`) is dedicated to building iOS IPA files for the F
    chmod +x build_ipa.sh
    ```
 
-3. **Update the export options:**
-   - Edit `ios/exportOptions.plist`
-   - Replace `YOUR_TEAM_ID` with your actual Apple Developer Team ID
+3. **Export options (already configured for unsigned builds):**
+   - The `ios/exportOptions.plist` is already configured for unsigned development builds
+   - No Team ID or certificates required for unsigned builds
 
 4. **Run the build script:**
    ```bash
@@ -44,17 +44,18 @@ build/ios/ipa/Runner.ipa
 ## ⚙️ Configuration Files
 
 ### `ios/exportOptions.plist`
-Configuration for IPA export settings:
-- **method**: `app-store` (for App Store distribution)
-- **teamID**: Your Apple Developer Team ID
-- **signingStyle**: `automatic` (automatic code signing)
+Configuration for unsigned IPA export settings:
+- **method**: `development` (for development/testing distribution)
+- **signingStyle**: `manual` (manual code signing - no signing required)
+- **provisioningProfiles**: Empty (no provisioning profiles needed)
+- **signingCertificate**: Empty (no certificates needed)
 
 ### `build_ipa.sh`
 Automated build script that:
 1. Cleans previous builds
-2. Builds Flutter for iOS
-3. Archives the app with Xcode
-4. Exports the IPA
+2. Builds Flutter for iOS (unsigned)
+3. Archives the app with Xcode (unsigned)
+4. Exports the unsigned IPA
 
 ## 🔧 Manual Build Steps
 
@@ -66,26 +67,29 @@ If you prefer to build manually:
    flutter pub get
    ```
 
-2. **Build Flutter for iOS:**
+2. **Build Flutter for iOS (unsigned):**
    ```bash
    flutter build ios --release --no-codesign
    ```
 
-3. **Archive with Xcode:**
+3. **Archive with Xcode (unsigned):**
    ```bash
    xcodebuild -workspace ios/Runner.xcworkspace \
               -scheme Runner \
               -configuration Release \
               -archivePath build/ios/archive/Runner.xcarchive \
+              -allowProvisioningUpdates \
+              -allowProvisioningDeviceRegistration \
               archive
    ```
 
-4. **Export IPA:**
+4. **Export IPA (unsigned):**
    ```bash
    xcodebuild -exportArchive \
               -archivePath build/ios/archive/Runner.xcarchive \
               -exportOptionsPlist ios/exportOptions.plist \
-              -exportPath build/ios/ipa
+              -exportPath build/ios/ipa \
+              -allowProvisioningUpdates
    ```
 
 ## 🐛 Troubleshooting
@@ -110,12 +114,9 @@ If you prefer to build manually:
    - Delete derived data in Xcode
    - Check for any iOS-specific errors in the build
 
-### Getting Your Team ID
+### For Unsigned Builds
 
-1. Go to [Apple Developer Portal](https://developer.apple.com)
-2. Sign in with your Apple ID
-3. Click on "Membership" in the left sidebar
-4. Your Team ID is displayed there (10-character string)
+No Team ID, provisioning profiles, or certificates are required for unsigned builds. The configuration is already set up for development/testing purposes.
 
 ## 📱 App Information
 
@@ -144,20 +145,16 @@ To update the app version:
 
 ## 📋 Distribution
 
-### App Store Distribution
-1. Build the IPA using the script
-2. Upload to App Store Connect using Xcode or Application Loader
-3. Submit for review
+### Development/Testing Distribution
+1. Build the unsigned IPA using the script
+2. Use for internal testing and development
+3. Can be installed on devices for testing (with appropriate provisioning)
 
-### TestFlight Distribution
-1. Build the IPA using the script
-2. Upload to App Store Connect
-3. Add testers and distribute via TestFlight
-
-### Ad Hoc Distribution
-1. Update `ios/exportOptions.plist` method to `ad-hoc`
-2. Build the IPA
-3. Distribute to registered devices
+### Converting to Signed IPA (if needed)
+To create a signed IPA for App Store or TestFlight:
+1. Update `ios/exportOptions.plist` method to `app-store`
+2. Add your Team ID and provisioning profiles
+3. Run the build script again
 
 ## 🛠️ Development
 
