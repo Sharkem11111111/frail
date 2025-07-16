@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 import '../widgets/rankingrulecard_widget.dart';
 import '../widgets/rankcard_widget.dart';
+import 'package:provider/provider.dart';
 
 class RankingScreen extends StatefulWidget {
   const RankingScreen({super.key});
@@ -13,20 +14,14 @@ class RankingScreen extends StatefulWidget {
 }
 
 class _RankingScreenState extends State<RankingScreen> {
-  final FitnessDataManager dataManager = FitnessDataManager();
-
-  @override
-  void initState() {
-    super.initState();
-    dataManager.onRankChanged = () => setState(() {});
-  }
+  FitnessDataProvider get dataProvider => context.watch<FitnessDataProvider>();
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Fitness Rankings'),
-        backgroundColor: dataManager.getRankColor(),
+        backgroundColor: dataProvider.getRankColor(),
         foregroundColor: Colors.white,
       ),
       body: SingleChildScrollView(
@@ -39,8 +34,8 @@ class _RankingScreenState extends State<RankingScreen> {
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    dataManager.getRankColor(),
-                    dataManager.getRankColor().withOpacity(0.7),
+                    dataProvider.getRankColor(),
+                    dataProvider.getRankColor().withOpacity(0.7),
                   ],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
@@ -49,13 +44,13 @@ class _RankingScreenState extends State<RankingScreen> {
               child: Column(
                 children: [
                   SvgPicture.asset(
-                    dataManager.getRankIconPath(),
+                    dataProvider.getRankIconPath(),
                     width: 60,
                     height: 60,
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    dataManager.getRankDisplayName(),
+                    dataProvider.getRankDisplayName(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 28,
@@ -64,7 +59,7 @@ class _RankingScreenState extends State<RankingScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '${dataManager.totalWorkoutsCompleted} Workouts Completed',
+                    '${dataProvider.totalWorkoutsCompleted} Workouts Completed',
                     style: const TextStyle(
                       color: Colors.white70,
                       fontSize: 16,
@@ -90,13 +85,13 @@ class _RankingScreenState extends State<RankingScreen> {
                         ),
                         const SizedBox(height: 8),
                         LinearProgressIndicator(
-                          value: (5 - dataManager.getWorkoutsUntilPromotion()) / 5,
+                          value: (5 - dataProvider.getWorkoutsUntilPromotion()) / 5,
                           backgroundColor: Colors.white.withOpacity(0.3),
                           valueColor: const AlwaysStoppedAnimation<Color>(Colors.white),
                         ),
                         const SizedBox(height: 8),
                         Text(
-                          '${dataManager.getWorkoutsUntilPromotion()} workouts remaining',
+                          '${dataProvider.getWorkoutsUntilPromotion()} workouts remaining',
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 14,
@@ -160,7 +155,7 @@ class _RankingScreenState extends State<RankingScreen> {
                   const SizedBox(height: 12),
                   ...FitnessRank.values.map((rank) => RankCard(
                     rank: rank,
-                    isCurrentRank: rank == dataManager.currentRank,
+                    isCurrentRank: rank == dataProvider.currentRank,
                     isAchieved: _isRankAchieved(rank),
                   )).toList(),
                 ],
@@ -173,6 +168,6 @@ class _RankingScreenState extends State<RankingScreen> {
   }
 
   bool _isRankAchieved(FitnessRank rank) {
-    return FitnessRank.values.indexOf(rank) >= FitnessRank.values.indexOf(dataManager.currentRank);
+    return FitnessRank.values.indexOf(rank) >= FitnessRank.values.indexOf(dataProvider.currentRank);
   }
 }

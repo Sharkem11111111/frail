@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 import 'workoutactivescreen_screen.dart';
 
@@ -11,7 +12,6 @@ class LowerBodyWorkoutScreen extends StatefulWidget {
 }
 
 class _LowerBodyWorkoutScreenState extends State<LowerBodyWorkoutScreen> {
-  final dataManager = FitnessDataManager();
   List<Exercise> selectedExercises = [];
 
   @override
@@ -24,7 +24,7 @@ class _LowerBodyWorkoutScreenState extends State<LowerBodyWorkoutScreen> {
     selectedExercises.clear();
     
     // Add favorite lower body exercises if available
-    selectedExercises.addAll(dataManager.lowerBodyFavorites.take(3));
+    selectedExercises.addAll(context.watch<FitnessDataProvider>().lowerBodyFavorites.take(3));
     
     // Fill with default lower body exercises if needed
     if (selectedExercises.length < 4) {
@@ -46,7 +46,7 @@ class _LowerBodyWorkoutScreenState extends State<LowerBodyWorkoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final availableMuscles = dataManager.getAvailableMuscles();
+    final availableMuscles = context.watch<FitnessDataProvider>().getAvailableMuscles();
     final lowerBodyMuscles = ['legs', 'glutes', 'calves'];
     final readyLowerMuscles = availableMuscles.where((m) => lowerBodyMuscles.contains(m)).toList();
     
@@ -89,7 +89,7 @@ class _LowerBodyWorkoutScreenState extends State<LowerBodyWorkoutScreen> {
                     ],
                     const SizedBox(height: 8),
                     Text(
-                      'This workout includes ${dataManager.lowerBodyFavorites.length} of your favorite lower body exercises.',
+                      'This workout includes ${context.watch<FitnessDataProvider>().lowerBodyFavorites.length} of your favorite lower body exercises.',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                   ],
@@ -105,7 +105,7 @@ class _LowerBodyWorkoutScreenState extends State<LowerBodyWorkoutScreen> {
               itemCount: selectedExercises.length,
               itemBuilder: (context, index) {
                 final exercise = selectedExercises[index];
-                final isFavorite = dataManager.lowerBodyFavorites.any((e) => e.name == exercise.name);
+                final isFavorite = context.watch<FitnessDataProvider>().lowerBodyFavorites.any((e) => e.name == exercise.name);
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -165,8 +165,7 @@ class _LowerBodyWorkoutScreenState extends State<LowerBodyWorkoutScreen> {
   }
 
   void _startWorkout() {
-    dataManager.currentWorkout = selectedExercises;
-    dataManager.onWorkoutChanged?.call();
+    context.read<FitnessDataProvider>().currentWorkout = selectedExercises;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const WorkoutActiveScreen()),

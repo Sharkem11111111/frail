@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
 import '../models/fitness_models.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 
 
 class ExerciseDetailCard extends StatelessWidget {
@@ -10,7 +11,7 @@ class ExerciseDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dataManager = FitnessDataManager();
+    final dataManager = context.watch<FitnessDataProvider>();
     final currentPreference = dataManager.exercisePreferences[exercise.name] ?? 0;
     
     return Card(
@@ -66,13 +67,13 @@ class ExerciseDetailCard extends StatelessWidget {
                         color: currentPreference > 0 ? Colors.green : Colors.grey,
                       ),
                       onPressed: () {
-                                                 dataManager.likeExercise(
-                           exercise.name,
-                           _inferMuscleTargetsFromName(exercise.name),
-                           exercise.sets,
-                           exercise.reps,
-                           exercise.weight,
-                         );
+                        dataManager.likeExercise(
+                          exercise.name,
+                          _inferMuscleTargetsFromName(exercise.name),
+                          exercise.sets,
+                          exercise.reps,
+                          exercise.weight,
+                        );
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text('Added ${exercise.name} to favorites! 👍'),

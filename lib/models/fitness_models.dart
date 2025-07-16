@@ -455,9 +455,9 @@ class EquipmentItem {
 
   EquipmentItem(this.name, this.isAvailable, {
     this.maxWeight = 0.0,
-    this.availableWeights = const [],
+    List<double>? availableWeights,
     this.supportsMultipleWeights = false,
-  });
+  }) : availableWeights = availableWeights?.toList() ?? [];
 
   String getWeightDescription() {
     if (availableWeights.isEmpty) {

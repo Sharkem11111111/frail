@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 import 'workoutbuilderscreen_screen.dart';
 import 'workoutactivescreen_screen.dart';
@@ -12,7 +13,6 @@ class CustomWorkoutScreen extends StatefulWidget {
 }
 
 class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
-  final dataManager = FitnessDataManager();
   List<Exercise> selectedExercises = [];
 
   @override
@@ -58,6 +58,7 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   Widget _buildExercisePoolTab() {
+    final dataManager = context.watch<FitnessDataProvider>();
     return dataManager.customWorkoutPool.isEmpty
         ? const Center(
             child: Column(
@@ -172,6 +173,7 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   Widget _buildSavedWorkoutsTab() {
+    final dataManager = context.watch<FitnessDataProvider>();
     return dataManager.savedWorkouts.isEmpty
         ? const Center(
             child: Column(
@@ -240,6 +242,7 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   void _createNewWorkout() {
+    final dataManager = context.read<FitnessDataProvider>();
     Navigator.push(
       context,
       MaterialPageRoute(
@@ -251,6 +254,7 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   void _startSavedWorkout(String workoutId) {
+    final dataManager = context.read<FitnessDataProvider>();
     dataManager.loadWorkout(workoutId);
     Navigator.pushReplacement(
       context,
@@ -259,6 +263,7 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   void _deleteSavedWorkout(String workoutId) {
+    final dataManager = context.read<FitnessDataProvider>();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -283,6 +288,7 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   void _showWorkoutDetails(SavedWorkout workout) {
+    final dataManager = context.read<FitnessDataProvider>();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -330,8 +336,8 @@ class _CustomWorkoutScreenState extends State<CustomWorkoutScreen> {
   }
 
   void _startWorkout() {
+    final dataManager = context.read<FitnessDataProvider>();
     dataManager.currentWorkout = selectedExercises;
-    dataManager.onWorkoutChanged?.call();
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const WorkoutActiveScreen()),

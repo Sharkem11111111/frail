@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 import 'nutritiongoalsscreen_screen.dart';
 import 'addfoodscreen_screen.dart';
+import 'package:provider/provider.dart';
 
 class CalorieScreen extends StatefulWidget {
   const CalorieScreen({super.key});
@@ -12,16 +13,12 @@ class CalorieScreen extends StatefulWidget {
 }
 
 class _CalorieScreenState extends State<CalorieScreen> with TickerProviderStateMixin {
-  final FitnessDataManager dataManager = FitnessDataManager();
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    dataManager.onCaloriesChanged = () {
-      if (mounted) setState(() {});
-    };
   }
 
   @override
@@ -71,6 +68,7 @@ class _CalorieScreenState extends State<CalorieScreen> with TickerProviderStateM
   }
 
   Widget _buildTodayTab() {
+    final dataManager = context.watch<FitnessDataProvider>();
     final progress = dataManager.caloriesConsumed / dataManager.calorieGoal;
     
     return SingleChildScrollView(
@@ -255,6 +253,7 @@ class _CalorieScreenState extends State<CalorieScreen> with TickerProviderStateM
   }
 
   Widget _buildMealSection(MealType mealType) {
+    final dataManager = context.watch<FitnessDataProvider>();
     final foods = dataManager.foodsByMeal[mealType] ?? [];
     final calories = dataManager.caloriesByMeal[mealType] ?? 0;
 
@@ -368,7 +367,7 @@ class _CalorieScreenState extends State<CalorieScreen> with TickerProviderStateM
             leading: const Icon(Icons.favorite),
             title: const Text('Add to Favorites'),
             onTap: () {
-              dataManager.addToFavorites(food);
+              context.read<FitnessDataProvider>().addToFavorites(food);
               Navigator.pop(context);
                     ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Added to favorites!')),
@@ -379,7 +378,7 @@ class _CalorieScreenState extends State<CalorieScreen> with TickerProviderStateM
             leading: const Icon(Icons.flash_on),
             title: const Text('Add to Quick Add'),
             onTap: () {
-              dataManager.addToQuickAdd(food);
+              context.read<FitnessDataProvider>().addToQuickAdd(food);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Added to quick add!')),
@@ -390,7 +389,7 @@ class _CalorieScreenState extends State<CalorieScreen> with TickerProviderStateM
             leading: const Icon(Icons.delete, color: Colors.red),
             title: const Text('Remove'),
             onTap: () {
-              dataManager.removeFoodEntry(food);
+              context.read<FitnessDataProvider>().removeFoodEntry(food);
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Food removed')),

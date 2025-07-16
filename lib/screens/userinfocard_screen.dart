@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import 'userinfoscreen_screen.dart';
+import 'package:provider/provider.dart';
 
 class UserInfoCard extends StatefulWidget {
   const UserInfoCard({super.key});
@@ -10,13 +11,7 @@ class UserInfoCard extends StatefulWidget {
 }
 
 class _UserInfoCardState extends State<UserInfoCard> {
-  final FitnessDataManager dataManager = FitnessDataManager();
-
-  @override
-  void initState() {
-    super.initState();
-    dataManager.onProfileChanged = () => setState(() {});
-  }
+  FitnessDataProvider get dataProvider => context.watch<FitnessDataProvider>();
 
   @override
   Widget build(BuildContext context) {
@@ -37,7 +32,7 @@ class _UserInfoCardState extends State<UserInfoCard> {
                 radius: 30,
                 backgroundColor: Theme.of(context).colorScheme.primary,
                 child: Text(
-                  dataManager.username.isNotEmpty ? dataManager.username[0].toUpperCase() : 'U',
+                  dataProvider.username.isNotEmpty ? dataProvider.username[0].toUpperCase() : 'U',
                   style: const TextStyle(
                     color: Colors.white,
                     fontSize: 24,
@@ -51,20 +46,20 @@ class _UserInfoCardState extends State<UserInfoCard> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      dataManager.username.isNotEmpty ? dataManager.username : 'Set up your profile',
+                      dataProvider.username.isNotEmpty ? dataProvider.username : 'Set up your profile',
                       style: Theme.of(context).textTheme.titleLarge,
                     ),
                     Text(
-                      dataManager.currentWeight > 0 
-                          ? '${dataManager.currentWeight.toInt()} lbs • ${dataManager.fitnessGoal}'
+                      dataProvider.currentWeight > 0 
+                          ? '${dataProvider.currentWeight.toInt()} lbs • ${dataProvider.fitnessGoal}'
                           : 'Tap to add your information',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Colors.grey[600],
                       ),
                     ),
-                    if (dataManager.currentWeight > 0 && dataManager.goalWeight > 0)
+                    if (dataProvider.currentWeight > 0 && dataProvider.goalWeight > 0)
                       Text(
-                        dataManager.getWeightProgressText(),
+                        dataProvider.getWeightProgressText(),
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
                           color: Theme.of(context).colorScheme.primary,
                           fontWeight: FontWeight.w500,

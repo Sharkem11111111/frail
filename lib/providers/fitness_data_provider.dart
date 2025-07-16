@@ -4,13 +4,8 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Global Data Manager for AI to modify app data
-class FitnessDataManager {
-  static final FitnessDataManager _instance = FitnessDataManager._internal();
-  factory FitnessDataManager() => _instance;
-  FitnessDataManager._internal();
-
-  // Workout Data
+class FitnessDataProvider extends ChangeNotifier {
+  // --- BEGIN MIGRATED FIELDS ---
   List<Exercise> currentWorkout = [
     Exercise('Push-ups', 'Chest, Triceps, Shoulders'),
     Exercise('Squats', 'Legs, Glutes'),
@@ -18,47 +13,25 @@ class FitnessDataManager {
     Exercise('Plank', 'Core'),
   ];
 
-  // Enhanced Nutrition Data
   NutritionGoals nutritionGoals = NutritionGoals(
     calories: 2200,
     protein: 150.0,
     carbs: 220.0,
     fat: 75.0,
   );
-  List<FoodEntry> todaysFoods = [
-    FoodEntry('Oatmeal with berries', 320, protein: 8.0, carbs: 58.0, fat: 6.0, mealType: MealType.breakfast),
-    FoodEntry('Grilled chicken salad', 450, protein: 35.0, carbs: 15.0, fat: 28.0, mealType: MealType.lunch),
-    FoodEntry('Greek yogurt', 150, protein: 15.0, carbs: 12.0, fat: 6.0, mealType: MealType.snack),
-    FoodEntry('Banana', 105, protein: 1.3, carbs: 27.0, fat: 0.4, mealType: MealType.snack),
-    FoodEntry('Almonds (1 oz)', 160, protein: 6.0, carbs: 6.0, fat: 14.0, mealType: MealType.snack),
-    FoodEntry('Protein shake', 265, protein: 25.0, carbs: 8.0, fat: 3.0, mealType: MealType.snack),
-  ];
-  
-  // Food tracking lists
+  List<FoodEntry> todaysFoods = [];
   List<FoodEntry> recentFoods = [];
   List<FoodEntry> favoriteFoods = [];
   List<FoodEntry> quickAddFoods = [];
   Map<String, int> foodSearchHistory = {};
-
-  // Sleep Data
   double sleepGoal = 8.0;
-  double hoursSlept = 7.5;
-  List<SleepEntry> weekSleep = [
-    SleepEntry('Monday', 7.0),
-    SleepEntry('Tuesday', 8.2),
-    SleepEntry('Wednesday', 6.5),
-    SleepEntry('Thursday', 7.8),
-    SleepEntry('Friday', 7.2),
-    SleepEntry('Saturday', 9.0),
-    SleepEntry('Sunday', 8.5),
-  ];
-
-  // Ranking System Data
-  int totalWorkoutsCompleted = 6; // Starting with existing progress
+  double hoursSlept = 0.0;
+  List<SleepEntry> weekSleep = [];
+  DateTime lastNutritionUpdate = DateTime.now();
+  DateTime lastSleepWeekUpdate = DateTime.now();
+  int totalWorkoutsCompleted = 6;
   DateTime lastWorkoutDate = DateTime.now().subtract(const Duration(days: 1));
-  FitnessRank currentRank = FitnessRank.tinIII; // Start at Tin III
-
-  // Available Equipment Data
+  FitnessRank currentRank = FitnessRank.tinIII;
   Map<String, EquipmentItem> availableEquipment = {
     'dumbbells': EquipmentItem('Dumbbells', false, maxWeight: 50),
     'barbells': EquipmentItem('Barbells', false, maxWeight: 135),
@@ -80,17 +53,13 @@ class FitnessDataManager {
     'yoga_mat': EquipmentItem('Yoga Mat', false),
     'ab_wheel': EquipmentItem('Ab Wheel', false),
   };
-
-  // User Profile Data
   String username = 'Fitness Warrior';
-  double currentWeight = 0.0; // lbs
-  double goalWeight = 0.0; // lbs
-  double height = 0.0; // inches
+  double currentWeight = 0.0;
+  double goalWeight = 0.0;
+  double height = 0.0;
   int age = 0;
-  String fitnessGoal = 'Build Muscle'; // Build Muscle, Lose Weight, Maintain, Get Stronger
+  String fitnessGoal = 'Build Muscle';
   DateTime joinDate = DateTime.now();
-
-  // Muscle Recovery Tracking
   Map<String, DateTime> muscleLastWorked = {
     'chest': DateTime.now().subtract(const Duration(days: 3)),
     'back': DateTime.now().subtract(const Duration(days: 3)),
@@ -103,61 +72,47 @@ class FitnessDataManager {
     'calves': DateTime.now().subtract(const Duration(days: 3)),
     'forearms': DateTime.now().subtract(const Duration(days: 3)),
   };
-
-  // Exercise Preferences and Custom Workouts
-  Map<String, int> exercisePreferences = {}; // exercise name -> preference score (0-10)
+  Map<String, int> exercisePreferences = {};
   List<Exercise> customWorkoutPool = [];
   List<Exercise> upperBodyFavorites = [];
   List<Exercise> lowerBodyFavorites = [];
   List<SavedWorkout> savedWorkouts = [];
   Map<String, ExerciseInstructions> customExerciseInstructions = {};
-  
-  // Weight Tracking and Progress Management
-  Map<String, double> exerciseWeightHistory = {}; // exercise name -> last used weight
-  Map<String, List<WorkoutSession>> workoutHistory = {}; // exercise name -> list of workout sessions
-  Map<String, int> exerciseSuccessStreak = {}; // exercise name -> consecutive successful sessions
-  Map<String, int> exerciseFailureStreak = {}; // exercise name -> consecutive failed sessions
-  Map<String, DateTime> lastExerciseAttempt = {}; // exercise name -> last attempt date
-  
-  // Active Workout Session Persistence
+  Map<String, double> exerciseWeightHistory = {};
+  Map<String, List<WorkoutSession>> workoutHistory = {};
+  Map<String, int> exerciseSuccessStreak = {};
+  Map<String, int> exerciseFailureStreak = {};
+  Map<String, DateTime> lastExerciseAttempt = {};
   bool hasActiveWorkout = false;
   DateTime? workoutStartTime;
   int workoutElapsedSeconds = 0;
   Map<String, dynamic> exerciseProgressData = {};
+  // --- END MIGRATED FIELDS ---
 
-  // Callbacks for UI updates
-  VoidCallback? onWorkoutChanged;
-  VoidCallback? onCaloriesChanged;
-  VoidCallback? onSleepChanged;
-  VoidCallback? onRankChanged;
-  VoidCallback? onEquipmentChanged;
-  VoidCallback? onProfileChanged;
+  // --- BEGIN METHODS AND GETTERS ---
 
   // AI Methods to modify data
   void modifyWorkout(List<Exercise> newWorkout) {
     currentWorkout = newWorkout;
-    onWorkoutChanged?.call();
+    notifyListeners();
   }
 
   void addExercise(String name, String muscles, {int sets = 3, int reps = 8, double weight = 0}) {
     final exercise = Exercise(name, muscles);
     exercise.sets = sets;
     exercise.reps = reps;
-    
-    // Use recommended weight if no weight specified and we have history
     if (weight == 0) {
       exercise.weight = getRecommendedWeight(name, 0.0);
     } else {
       exercise.weight = weight;
     }
-    
     currentWorkout.add(exercise);
-    onWorkoutChanged?.call();
+    notifyListeners();
   }
 
   void removeExercise(String exerciseName) {
     currentWorkout.removeWhere((exercise) => exercise.name.toLowerCase() == exerciseName.toLowerCase());
-    onWorkoutChanged?.call();
+    notifyListeners();
   }
 
   void replaceExercise(String oldName, String newName, String muscles, {int sets = 3, int reps = 8, double weight = 0}) {
@@ -166,22 +121,19 @@ class FitnessDataManager {
       final newExercise = Exercise(newName, muscles);
       newExercise.sets = sets;
       newExercise.reps = reps;
-      
-      // Use recommended weight if no weight specified and we have history
       if (weight == 0) {
         newExercise.weight = getRecommendedWeight(newName, 0.0);
       } else {
         newExercise.weight = weight;
       }
-      
       currentWorkout[index] = newExercise;
-      onWorkoutChanged?.call();
+      notifyListeners();
     }
   }
 
   void updateNutritionGoals(NutritionGoals newGoals) {
     nutritionGoals = newGoals;
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   void updateCalorieGoal(int newGoal) {
@@ -193,23 +145,18 @@ class FitnessDataManager {
       fiber: nutritionGoals.fiber,
       sodium: nutritionGoals.sodium,
     );
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   void addFood(FoodEntry foodEntry) {
     todaysFoods.add(foodEntry);
-    
-    // Add to recent foods (keep last 20)
     recentFoods.removeWhere((f) => f.name == foodEntry.name);
     recentFoods.insert(0, foodEntry);
     if (recentFoods.length > 20) {
       recentFoods.removeLast();
     }
-    
-    // Update search history
     foodSearchHistory[foodEntry.name] = (foodSearchHistory[foodEntry.name] ?? 0) + 1;
-    
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   void addFoodLegacy(String name, int calories) {
@@ -219,19 +166,19 @@ class FitnessDataManager {
 
   void removeFoodEntry(FoodEntry foodEntry) {
     todaysFoods.remove(foodEntry);
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   void addToFavorites(FoodEntry foodEntry) {
     final favoriteEntry = foodEntry.copyWith(isFavorite: true);
     favoriteFoods.removeWhere((f) => f.name == favoriteEntry.name);
     favoriteFoods.add(favoriteEntry);
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   void removeFromFavorites(String foodName) {
     favoriteFoods.removeWhere((f) => f.name == foodName);
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   void addToQuickAdd(FoodEntry foodEntry) {
@@ -240,7 +187,7 @@ class FitnessDataManager {
     if (quickAddFoods.length > 10) {
       quickAddFoods.removeLast();
     }
-    onCaloriesChanged?.call();
+    notifyListeners();
   }
 
   // Nutrition Calculations
@@ -273,178 +220,64 @@ class FitnessDataManager {
     return result;
   }
 
+  // --- CONTINUED METHODS AND GETTERS ---
+
   void updateSleepGoal(double newGoal) {
     sleepGoal = newGoal;
-    onSleepChanged?.call();
+    notifyListeners();
   }
 
   void logSleep(double hours) {
     hoursSlept = hours;
-    // Update today's sleep (assuming Sunday is today)
-    if (weekSleep.isNotEmpty) {
-      weekSleep.last = SleepEntry('Sunday', hours);
+    
+    // Ensure weekSleep is initialized with all days of the week
+    if (weekSleep.isEmpty) {
+      weekSleep = [
+        SleepEntry('Monday', 0.0),
+        SleepEntry('Tuesday', 0.0),
+        SleepEntry('Wednesday', 0.0),
+        SleepEntry('Thursday', 0.0),
+        SleepEntry('Friday', 0.0),
+        SleepEntry('Saturday', 0.0),
+        SleepEntry('Sunday', 0.0),
+      ];
     }
-    onSleepChanged?.call();
+    
+    // Update the correct day based on current weekday
+    final now = DateTime.now();
+    final days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    final todayIndex = (now.weekday - 1) % 7; // DateTime.weekday: 1=Mon, ..., 7=Sun
+    
+    if (todayIndex < weekSleep.length) {
+      weekSleep[todayIndex] = SleepEntry(days[todayIndex], hours);
+    }
+    
+    notifyListeners();
   }
 
-  // Get workout summary for AI
-  String getWorkoutSummary() {
-    return currentWorkout.map((e) => '${e.name}: ${e.sets} sets × ${e.reps} reps @ ${e.weight} lbs').join('\n');
+  // Ranking System Methods
+  void completeWorkout() {
+    if (!hasActiveWorkout) return;
+    totalWorkoutsCompleted++;
+    lastWorkoutDate = DateTime.now();
+    List<String> musclesWorked = [];
+    for (Exercise exercise in currentWorkout) {
+      musclesWorked.addAll(extractMusclesFromExercise(exercise.name, exercise.muscles));
+    }
+    markMusclesWorked(musclesWorked);
+    hasActiveWorkout = false;
+    workoutStartTime = null;
+    workoutElapsedSeconds = 0;
+    exerciseProgressData = {};
+    _checkForRankPromotion();
+    notifyListeners();
   }
 
-  // Exercise Instructions Methods
-  Future<ExerciseInstructions?> getExerciseInstructions(String exerciseName) async {
-    // First check preloaded database
-    final preloaded = ExerciseDatabase.getInstructions(exerciseName);
-    if (preloaded != null) {
-      return preloaded;
-    }
-
-    // Check custom saved instructions
-    final key = exerciseName.toLowerCase().trim();
-    if (customExerciseInstructions.containsKey(key)) {
-      return customExerciseInstructions[key];
-    }
-
-    // Generate using AI and save for future use
-    try {
-      final instructions = await _generateExerciseInstructionsWithAI(exerciseName);
-      if (instructions != null) {
-        customExerciseInstructions[key] = instructions;
-        saveUserData(); // Save to persistent storage
-        return instructions;
-      }
-    } catch (e) {
-      // Error generating exercise instructions: $e
-    }
-
-    return null;
-  }
-
-  Future<ExerciseInstructions?> _generateExerciseInstructionsWithAI(String exerciseName) async {
-    final prompt = '''
-Please provide detailed instructions for the exercise "$exerciseName". Format your response as follows:
-
-DESCRIPTION: [Brief description of the exercise and what muscles it targets]
-
-STEPS:
-1. [First step]
-2. [Second step]
-3. [Third step]
-4. [etc...]
-
-TIPS:
-- [Important form tip]
-- [Safety tip]
-- [Performance tip]
-- [etc...]
-
-DIFFICULTY: [Beginner/Intermediate/Advanced]
-
-EQUIPMENT: [Equipment needed, or "None" if bodyweight]
-
-Keep the response concise but comprehensive. Focus on proper form and safety.
-''';
-
-    try {
-      // Use Gemini API directly
-      const String apiKey = 'YOUR_GEMINI_API_KEY_HERE';
-      
-      if (apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
-        // Gemini API key not configured
-        return null;
-      }
-
-      final String url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey';
-      
-      final response = await http.post(
-        Uri.parse(url),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'contents': [{
-            'parts': [{'text': prompt}]
-          }]
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        if (data['candidates'] != null && data['candidates'].isNotEmpty) {
-          final content = data['candidates'][0]['content']['parts'][0]['text'];
-          return _parseAIInstructionResponse(content, exerciseName);
-        }
-      } else {
-        // Gemini API error: ${response.statusCode} - ${response.body}
-      }
-    } catch (e) {
-              // Network error calling Gemini: $e
-    }
-
-    return null;
-  }
-
-  ExerciseInstructions? _parseAIInstructionResponse(String response, String exerciseName) {
-    try {
-      final lines = response.split('\n').where((line) => line.trim().isNotEmpty).toList();
-      
-      String description = '';
-      List<String> steps = [];
-      List<String> tips = [];
-      String difficulty = 'Medium';
-      String equipment = 'Unknown';
-
-      String currentSection = '';
-      
-      for (String line in lines) {
-        final trimmed = line.trim();
-        
-        if (trimmed.startsWith('DESCRIPTION:')) {
-          description = trimmed.substring(12).trim();
-          currentSection = 'description';
-        } else if (trimmed.startsWith('STEPS:')) {
-          currentSection = 'steps';
-        } else if (trimmed.startsWith('TIPS:')) {
-          currentSection = 'tips';
-        } else if (trimmed.startsWith('DIFFICULTY:')) {
-          difficulty = trimmed.substring(11).trim();
-          currentSection = '';
-        } else if (trimmed.startsWith('EQUIPMENT:')) {
-          equipment = trimmed.substring(10).trim();
-          currentSection = '';
-        } else if (currentSection == 'steps' && (trimmed.startsWith(RegExp(r'\d+\.')) || trimmed.startsWith('-'))) {
-          steps.add(trimmed.replaceFirst(RegExp(r'^\d+\.\s*'), '').replaceFirst(RegExp(r'^-\s*'), ''));
-        } else if (currentSection == 'tips' && trimmed.startsWith('-')) {
-          tips.add(trimmed.substring(1).trim());
-        } else if (currentSection == 'description' && !trimmed.startsWith(RegExp(r'[A-Z]+:'))) {
-          description += ' ' + trimmed;
-        }
-      }
-
-      if (description.isNotEmpty && steps.isNotEmpty) {
-        return ExerciseInstructions(
-          name: exerciseName,
-          description: description.trim(),
-          steps: steps,
-          tips: tips,
-          difficulty: difficulty,
-          equipment: equipment,
-        );
-      }
-    } catch (e) {
-      // Error parsing AI instruction response: $e
-    }
-
-    return null;
-  }
-
-  // Active Workout Session Management
   void startActiveWorkout() {
     hasActiveWorkout = true;
     workoutStartTime = DateTime.now();
     workoutElapsedSeconds = 0;
     exerciseProgressData = {};
-    
-    // Initialize progress for each exercise
     for (int i = 0; i < currentWorkout.length; i++) {
       final exercise = currentWorkout[i];
       exerciseProgressData[i.toString()] = {
@@ -454,28 +287,23 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
         'isCompleted': false,
       };
     }
-    
-    saveUserData();
-    onWorkoutChanged?.call();
+    notifyListeners();
   }
 
   void updateWorkoutProgress(int exerciseIndex, int currentSet, int repsCompleted, int setsCompleted, bool isCompleted, int elapsedSeconds) {
     if (!hasActiveWorkout) return;
-    
     exerciseProgressData[exerciseIndex.toString()] = {
       'currentSet': currentSet,
       'repsCompleted': repsCompleted,
       'setsCompleted': setsCompleted,
       'isCompleted': isCompleted,
     };
-    
     workoutElapsedSeconds = elapsedSeconds;
-    saveUserData();
+    notifyListeners();
   }
 
   bool isWorkoutCompleted() {
     if (!hasActiveWorkout || exerciseProgressData.isEmpty) return false;
-    
     for (int i = 0; i < currentWorkout.length; i++) {
       final progressData = exerciseProgressData[i.toString()];
       if (progressData == null || !progressData['isCompleted']) {
@@ -491,102 +319,20 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     workoutElapsedSeconds = 0;
     exerciseProgressData = {};
     currentWorkout.clear();
-    saveUserData();
-    onWorkoutChanged?.call();
+    notifyListeners();
   }
 
-  // Ranking System Methods
-  void completeWorkout() {
-    if (!hasActiveWorkout) return;
-    
-    totalWorkoutsCompleted++;
-    lastWorkoutDate = DateTime.now();
-    
-    // Track muscles worked in current workout
-    List<String> musclesWorked = [];
-    for (Exercise exercise in currentWorkout) {
-      musclesWorked.addAll(extractMusclesFromExercise(exercise.name, exercise.muscles));
-    }
-    markMusclesWorked(musclesWorked);
-    
-    // Clear active workout session
-    hasActiveWorkout = false;
-    workoutStartTime = null;
-    workoutElapsedSeconds = 0;
-    exerciseProgressData = {};
-    
-    _checkForRankPromotion();
-    saveUserData();
-    onRankChanged?.call();
-  }
-
-  void _checkForRankPromotion() {
-    // Every 5 workouts = promotion
-    int divisionProgression = totalWorkoutsCompleted ~/ 5;
-    FitnessRank newRank = _getRankFromProgression(divisionProgression);
-    
-    // Check for demotion due to inactivity
-    newRank = _checkForDemotion(newRank);
-    
-    if (newRank != currentRank) {
-      currentRank = newRank;
-    }
-  }
-
-  FitnessRank _getRankFromProgression(int progression) {
-    // Start at Tin III (index 2), work backwards
-    List<FitnessRank> allRanks = FitnessRank.values.reversed.toList();
-    int rankIndex = (2 - progression).clamp(0, allRanks.length - 1);
-    return allRanks[rankIndex];
-  }
-
-  FitnessRank _checkForDemotion(FitnessRank baseRank) {
-    DateTime now = DateTime.now();
-    int daysSinceLastWorkout = now.difference(lastWorkoutDate).inDays;
-    
-    if (daysSinceLastWorkout >= 7) {
-      // Demote one division for every week of inactivity
-      int weeksInactive = daysSinceLastWorkout ~/ 7;
-      List<FitnessRank> allRanks = FitnessRank.values.reversed.toList();
-      int currentIndex = allRanks.indexOf(baseRank);
-      int newIndex = (currentIndex + weeksInactive).clamp(0, allRanks.length - 1);
-      return allRanks[newIndex];
-    }
-    
-    return baseRank;
-  }
-
-  String getRankDisplayName() {
-    return currentRank.displayName;
-  }
-
-  Color getRankColor() {
-    return currentRank.color;
-  }
-
-  String getRankIconPath() {
-    return currentRank.iconPath;
-  }
-
-  int getWorkoutsUntilPromotion() {
-    int currentProgress = totalWorkoutsCompleted % 5;
-    return 5 - currentProgress;
-  }
-
-  // Equipment Management Methods
   void toggleEquipment(String equipmentKey, bool isAvailable) {
     if (availableEquipment.containsKey(equipmentKey)) {
       availableEquipment[equipmentKey]!.isAvailable = isAvailable;
-      saveUserData();
-      onEquipmentChanged?.call();
+      notifyListeners();
     }
   }
 
   void updateEquipmentWeight(String equipmentKey, double maxWeight) {
     if (availableEquipment.containsKey(equipmentKey)) {
       availableEquipment[equipmentKey]!.maxWeight = maxWeight;
-      saveUserData();
-      onEquipmentChanged?.call();
+      notifyListeners();
     }
   }
 
@@ -595,8 +341,7 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       if (!availableEquipment[equipmentKey]!.availableWeights.contains(weight)) {
         availableEquipment[equipmentKey]!.availableWeights.add(weight);
         availableEquipment[equipmentKey]!.availableWeights.sort();
-        saveUserData();
-        onEquipmentChanged?.call();
+        notifyListeners();
       }
     }
   }
@@ -604,8 +349,7 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
   void removeSpecificWeight(String equipmentKey, double weight) {
     if (availableEquipment.containsKey(equipmentKey)) {
       availableEquipment[equipmentKey]!.availableWeights.remove(weight);
-      saveUserData();
-      onEquipmentChanged?.call();
+      notifyListeners();
     }
   }
 
@@ -628,66 +372,53 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     if (available.isEmpty) {
       return "Consider investing in basic equipment like dumbbells or a pull-up bar for better workouts!";
     }
-    
     String suggestion = "Great! You have ${available.join(', ')}.";
-    
-    // Add specific weight information for equipment that supports it
     for (String key in availableEquipment.keys) {
       EquipmentItem equipment = availableEquipment[key]!;
       if (equipment.isAvailable && equipment.supportsMultipleWeights && equipment.availableWeights.isNotEmpty) {
         suggestion += "\n${equipment.name}: ${equipment.availableWeights.map((w) => '${w.toInt()} lbs').join(', ')} pairs available.";
       }
     }
-    
     return suggestion + "\nLet's create workouts using your available equipment.";
   }
 
-  // User Profile Management Methods
   void updateUsername(String newUsername) {
     username = newUsername;
-    saveUserData();
-    onProfileChanged?.call();
+    notifyListeners();
   }
 
   void updateWeight(double newWeight) {
     currentWeight = newWeight;
-    saveUserData();
-    onProfileChanged?.call();
+    notifyListeners();
   }
 
   void updateGoalWeight(double newGoalWeight) {
     goalWeight = newGoalWeight;
-    saveUserData();
-    onProfileChanged?.call();
+    notifyListeners();
   }
 
   void updateHeight(double newHeight) {
     height = newHeight;
-    saveUserData();
-    onProfileChanged?.call();
+    notifyListeners();
   }
 
   void updateAge(int newAge) {
     age = newAge;
-    saveUserData();
-    onProfileChanged?.call();
+    notifyListeners();
   }
 
   void updateFitnessGoal(String newGoal) {
     fitnessGoal = newGoal;
-    saveUserData();
-    onProfileChanged?.call();
+    notifyListeners();
   }
 
-  // Calculate BMI
   double getBMI() {
     if (height <= 0 || currentWeight <= 0) return 0.0;
-    double heightInMeters = height * 0.0254; // Convert inches to meters
-    double weightInKg = currentWeight * 0.453592; // Convert lbs to kg
+    double heightInMeters = height * 0.0254;
+    double weightInKg = currentWeight * 0.453592;
     return weightInKg / (heightInMeters * heightInMeters);
   }
 
-  // Get BMI category
   String getBMICategory() {
     double bmi = getBMI();
     if (bmi == 0) return 'Not calculated';
@@ -697,28 +428,23 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     return 'Obese';
   }
 
-  // Calculate weight progress
   double getWeightProgress() {
     if (goalWeight == 0 || currentWeight == 0) return 0.0;
-    
     if (fitnessGoal == 'Lose Weight') {
-      if (currentWeight <= goalWeight) return 1.0; // Goal achieved
+      if (currentWeight <= goalWeight) return 1.0;
       double totalToLose = currentWeight - goalWeight;
       return totalToLose > 0 ? (currentWeight - goalWeight) / totalToLose : 0.0;
     } else if (fitnessGoal == 'Build Muscle') {
-      if (currentWeight >= goalWeight) return 1.0; // Goal achieved
+      if (currentWeight >= goalWeight) return 1.0;
       double totalToGain = goalWeight - currentWeight;
       return totalToGain > 0 ? (currentWeight - goalWeight) / totalToGain : 0.0;
     }
-    
-    return 0.0; // Maintain weight or other goals
+    return 0.0;
   }
 
   String getWeightProgressText() {
     if (goalWeight == 0 || currentWeight == 0) return 'Set your weight goals to track progress';
-    
     double difference = (goalWeight - currentWeight).abs();
-    
     if (fitnessGoal == 'Lose Weight') {
       if (currentWeight <= goalWeight) return 'Goal achieved! 🎉';
       return '${difference.toStringAsFixed(1)} lbs to lose';
@@ -730,43 +456,33 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     }
   }
 
-  // Muscle Recovery Tracking Methods
   List<String> getAvailableMuscles() {
     final now = DateTime.now();
     List<String> availableMuscles = [];
-    
     for (String muscle in muscleLastWorked.keys) {
       final daysSinceWorked = now.difference(muscleLastWorked[muscle]!).inDays;
-      
-      // Muscle is available if it's been 48+ hours (2+ days) since last worked
       if (daysSinceWorked >= 2) {
         availableMuscles.add(muscle);
       }
     }
-    
     return availableMuscles;
   }
 
   List<String> getRecoveringMuscles() {
     final now = DateTime.now();
     List<String> recoveringMuscles = [];
-    
     for (String muscle in muscleLastWorked.keys) {
       final daysSinceWorked = now.difference(muscleLastWorked[muscle]!).inDays;
-      
-      // Muscle is recovering if it's been less than 48 hours
       if (daysSinceWorked < 2) {
         recoveringMuscles.add(muscle);
       }
     }
-    
     return recoveringMuscles;
   }
 
   String getMuscleRecoveryStatus() {
     final available = getAvailableMuscles();
     final recovering = getRecoveringMuscles();
-    
     String status = '';
     if (available.isNotEmpty) {
       status += '✅ Ready to train: ${available.join(', ')}\n';
@@ -774,7 +490,6 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     if (recovering.isNotEmpty) {
       status += '⏳ Still recovering: ${recovering.join(', ')}';
     }
-    
     return status;
   }
 
@@ -785,14 +500,12 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
         muscleLastWorked[muscle.toLowerCase()] = now;
       }
     }
-    saveUserData();
+    notifyListeners();
   }
 
   List<String> extractMusclesFromExercise(String exerciseName, String muscleTargets) {
     final List<String> muscles = [];
     final combinedText = '${exerciseName.toLowerCase()} ${muscleTargets.toLowerCase()}';
-    
-    // Map exercise terms to muscle groups
     if (combinedText.contains('push') || combinedText.contains('bench') || combinedText.contains('chest')) {
       muscles.addAll(['chest', 'triceps', 'shoulders']);
     }
@@ -820,15 +533,14 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     if (combinedText.contains('glute') || combinedText.contains('bridge')) {
       muscles.add('glutes');
     }
-    
-    return muscles.toSet().toList(); // Remove duplicates
+    return muscles.toSet().toList();
   }
+
+  // --- PREFERENCES, SAVED WORKOUTS, WEIGHT/PROGRESS TRACKING, HELPERS ---
 
   // Exercise Preference Management
   void likeExercise(String exerciseName, String muscles, int sets, int reps, double weight) {
     exercisePreferences[exerciseName] = (exercisePreferences[exerciseName] ?? 0) + 1;
-    
-    // Add to custom workout pool if not already there
     bool alreadyInPool = customWorkoutPool.any((ex) => ex.name.toLowerCase() == exerciseName.toLowerCase());
     if (!alreadyInPool) {
       final exercise = Exercise(exerciseName, muscles);
@@ -837,14 +549,9 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       exercise.weight = weight;
       customWorkoutPool.add(exercise);
     }
-    
-    // Categorize into upper/lower body favorites
     List<String> targetedMuscles = extractMusclesFromExercise(exerciseName, muscles);
-    bool isUpperBody = targetedMuscles.any((muscle) => 
-      ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms'].contains(muscle));
-    bool isLowerBody = targetedMuscles.any((muscle) => 
-      ['legs', 'glutes', 'calves'].contains(muscle));
-    
+    bool isUpperBody = targetedMuscles.any((muscle) => ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms'].contains(muscle));
+    bool isLowerBody = targetedMuscles.any((muscle) => ['legs', 'glutes', 'calves'].contains(muscle));
     if (isUpperBody) {
       bool alreadyInUpper = upperBodyFavorites.any((ex) => ex.name.toLowerCase() == exerciseName.toLowerCase());
       if (!alreadyInUpper) {
@@ -855,7 +562,6 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
         upperBodyFavorites.add(exercise);
       }
     }
-    
     if (isLowerBody) {
       bool alreadyInLower = lowerBodyFavorites.any((ex) => ex.name.toLowerCase() == exerciseName.toLowerCase());
       if (!alreadyInLower) {
@@ -866,8 +572,7 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
         lowerBodyFavorites.add(exercise);
       }
     }
-    
-    saveUserData();
+    notifyListeners();
   }
 
   void dislikeExercise(String exerciseName) {
@@ -875,22 +580,19 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     if (exercisePreferences[exerciseName]! <= 0) {
       exercisePreferences.remove(exerciseName);
     }
-    saveUserData();
+    notifyListeners();
   }
 
   void toggleExercisePreference(String exerciseName) {
     final currentPreference = exercisePreferences[exerciseName] ?? 0;
     if (currentPreference == 0) {
-      // Like the exercise
       exercisePreferences[exerciseName] = 1;
     } else if (currentPreference > 0) {
-      // Remove from preferences
       exercisePreferences.remove(exerciseName);
     } else {
-      // Change from dislike to like
       exercisePreferences[exerciseName] = 1;
     }
-    saveUserData();
+    notifyListeners();
   }
 
   List<String> getPreferredExercises() {
@@ -901,12 +603,10 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
 
   String getPreferencesForAI() {
     if (exercisePreferences.isEmpty) return 'No exercise preferences set yet.';
-    
     var liked = exercisePreferences.entries.where((e) => e.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
     var disliked = exercisePreferences.entries.where((e) => e.value < 0).toList()
       ..sort((a, b) => a.value.compareTo(b.value));
-    
     String result = '';
     if (liked.isNotEmpty) {
       result += 'PREFERRED EXERCISES (recommend these more): ${liked.map((e) => '${e.key} (score: ${e.value})').join(', ')}\n';
@@ -914,7 +614,6 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     if (disliked.isNotEmpty) {
       result += 'DISLIKED EXERCISES (avoid these): ${disliked.map((e) => '${e.key} (score: ${e.value})').join(', ')}';
     }
-    
     return result;
   }
 
@@ -933,14 +632,13 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       createdDate: DateTime.now(),
       description: description,
     );
-    
     savedWorkouts.add(savedWorkout);
-    saveUserData();
+    notifyListeners();
   }
 
   void deleteWorkout(String workoutId) {
     savedWorkouts.removeWhere((w) => w.id == workoutId);
-    saveUserData();
+    notifyListeners();
   }
 
   void loadWorkout(String workoutId) {
@@ -952,7 +650,284 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       copy.weight = e.weight;
       return copy;
     }).toList();
-    onWorkoutChanged?.call();
+    notifyListeners();
+  }
+
+  // Weight Management and Progress Tracking Methods
+  void markExerciseTooHeavy(String exerciseName, double currentWeight) {
+    final reducedWeight = (currentWeight * 0.9).roundToDouble();
+    exerciseWeightHistory[exerciseName] = reducedWeight;
+    exerciseFailureStreak[exerciseName] = (exerciseFailureStreak[exerciseName] ?? 0) + 1;
+    exerciseSuccessStreak[exerciseName] = 0;
+    lastExerciseAttempt[exerciseName] = DateTime.now();
+    notifyListeners();
+  }
+
+  void recordWorkoutSession(String exerciseName, double weight, int sets, int reps, int completedSets, int completedReps, bool wasTooHeavy, int totalTime) {
+    final session = WorkoutSession(
+      name: exerciseName,
+      date: DateTime.now(),
+      exercises: [Exercise(exerciseName, 'Various muscles', sets: sets, reps: reps, weight: weight)],
+      durationMinutes: totalTime ~/ 60,
+      completed: completedSets >= sets && completedReps >= reps,
+      completedSets: completedSets,
+      completedReps: completedReps,
+    );
+    if (!workoutHistory.containsKey(exerciseName)) {
+      workoutHistory[exerciseName] = [];
+    }
+    workoutHistory[exerciseName]!.add(session);
+    if (workoutHistory[exerciseName]!.length > 20) {
+      workoutHistory[exerciseName]!.removeAt(0);
+    }
+    exerciseWeightHistory[exerciseName] = weight;
+    if (wasTooHeavy) {
+      exerciseFailureStreak[exerciseName] = (exerciseFailureStreak[exerciseName] ?? 0) + 1;
+      exerciseSuccessStreak[exerciseName] = 0;
+    } else if (completedSets >= sets && completedReps >= reps) {
+      exerciseSuccessStreak[exerciseName] = (exerciseSuccessStreak[exerciseName] ?? 0) + 1;
+      exerciseFailureStreak[exerciseName] = 0;
+    }
+    lastExerciseAttempt[exerciseName] = DateTime.now();
+    notifyListeners();
+  }
+
+  double getRecommendedWeight(String exerciseName, double defaultWeight) {
+    if (exerciseWeightHistory.containsKey(exerciseName)) {
+      final lastWeight = exerciseWeightHistory[exerciseName]!;
+      final failureStreak = exerciseFailureStreak[exerciseName] ?? 0;
+      final successStreak = exerciseSuccessStreak[exerciseName] ?? 0;
+      if (failureStreak > 0) {
+        return lastWeight;
+      }
+      if (successStreak >= 3) {
+        final increase = lastWeight * 0.05;
+        return (lastWeight + increase).roundToDouble();
+      }
+      return lastWeight;
+    }
+    return defaultWeight;
+  }
+
+  bool shouldIncreaseWeight(String exerciseName) {
+    final successStreak = exerciseSuccessStreak[exerciseName] ?? 0;
+    final failureStreak = exerciseFailureStreak[exerciseName] ?? 0;
+    return successStreak >= 3 && failureStreak == 0;
+  }
+
+  double getSafeWeightIncrease(String exerciseName) {
+    final currentWeight = exerciseWeightHistory[exerciseName] ?? 0;
+    if (currentWeight <= 0) return 0;
+    double increasePercentage = 0.05;
+    final exerciseNameLower = exerciseName.toLowerCase();
+    if (exerciseNameLower.contains('deadlift') || exerciseNameLower.contains('squat') || exerciseNameLower.contains('bench press')) {
+      increasePercentage = 0.03;
+    }
+    return (currentWeight * increasePercentage).roundToDouble();
+  }
+
+  List<WorkoutSession> getExerciseHistory(String exerciseName) {
+    return workoutHistory[exerciseName] ?? [];
+  }
+
+  double getExerciseProgress(String exerciseName) {
+    final history = getExerciseHistory(exerciseName);
+    if (history.isEmpty) return 0.0;
+    double totalProgress = 0.0;
+    int sessionCount = 0;
+    for (int i = 1; i < history.length; i++) {
+      final current = history[i];
+      final previous = history[i - 1];
+      final currentWeight = current.exercises.isNotEmpty ? current.exercises.first.weight : 0.0;
+      final previousWeight = previous.exercises.isNotEmpty ? previous.exercises.first.weight : 0.0;
+      if (currentWeight > previousWeight) {
+        totalProgress += 1.0;
+      }
+      final completionRate = (current.completedSets / (current.exercises.isNotEmpty ? current.exercises.first.sets : 1)) * (current.completedReps / (current.exercises.isNotEmpty ? current.exercises.first.reps : 1));
+      totalProgress += completionRate;
+      sessionCount++;
+    }
+    return sessionCount > 0 ? totalProgress / sessionCount : 0.0;
+  }
+
+  String getCurrentWorkoutString() {
+    if (currentWorkout.isEmpty) {
+      return "No workout currently set. Let me create one for you!";
+    }
+    return currentWorkout.map((exercise) {
+      String weightText = exercise.weight > 0 ? ' @ ${exercise.weight} lbs' : ' @ bodyweight';
+      return '${exercise.name}: ${exercise.sets} × ${exercise.reps}$weightText';
+    }).join('\n');
+  }
+  // ... (continue with more methods and getters in the next batch) ...
+  // --- END METHODS AND GETTERS ---
+
+  void _checkForRankPromotion() {
+    int divisionProgression = totalWorkoutsCompleted ~/ 5;
+    FitnessRank newRank = _getRankFromProgression(divisionProgression);
+    newRank = _checkForDemotion(newRank);
+    if (newRank != currentRank) {
+      currentRank = newRank;
+    }
+  }
+
+  FitnessRank _getRankFromProgression(int progression) {
+    List<FitnessRank> allRanks = FitnessRank.values.reversed.toList();
+    int rankIndex = (2 - progression).clamp(0, allRanks.length - 1);
+    return allRanks[rankIndex];
+  }
+
+  FitnessRank _checkForDemotion(FitnessRank baseRank) {
+    DateTime now = DateTime.now();
+    int daysSinceLastWorkout = now.difference(lastWorkoutDate).inDays;
+    if (daysSinceLastWorkout >= 7) {
+      int weeksInactive = daysSinceLastWorkout ~/ 7;
+      List<FitnessRank> allRanks = FitnessRank.values.reversed.toList();
+      int currentIndex = allRanks.indexOf(baseRank);
+      int newIndex = (currentIndex + weeksInactive).clamp(0, allRanks.length - 1);
+      return allRanks[newIndex];
+    }
+    return baseRank;
+  }
+
+  String getRankDisplayName() {
+    return currentRank.displayName;
+  }
+
+  Color getRankColor() {
+    return currentRank.color;
+  }
+
+  String getRankIconPath() {
+    return currentRank.iconPath;
+  }
+
+  int getWorkoutsUntilPromotion() {
+    int currentProgress = totalWorkoutsCompleted % 5;
+    return 5 - currentProgress;
+  }
+
+  String getWorkoutSummary() {
+    return currentWorkout.map((e) => '${e.name}: ${e.sets} sets × ${e.reps} reps @ ${e.weight} lbs').join('\n');
+  }
+
+  // --- FINAL MIGRATED METHODS: AI, PERSISTENCE, RESET, HELPERS ---
+
+  // Exercise Instructions Methods
+  Future<ExerciseInstructions?> getExerciseInstructions(String exerciseName) async {
+    final preloaded = ExerciseDatabase.getInstructions(exerciseName);
+    if (preloaded != null) {
+      return preloaded;
+    }
+    final key = exerciseName.toLowerCase().trim();
+    if (customExerciseInstructions.containsKey(key)) {
+      return customExerciseInstructions[key];
+    }
+    try {
+      final instructions = await _generateExerciseInstructionsWithAI(exerciseName);
+      if (instructions != null) {
+        customExerciseInstructions[key] = instructions;
+        await saveUserData();
+        return instructions;
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  Future<ExerciseInstructions?> _generateExerciseInstructionsWithAI(String exerciseName) async {
+    final prompt = '''
+Please provide detailed instructions for the exercise "$exerciseName". Format your response as follows:
+
+DESCRIPTION: [Brief description of the exercise and what muscles it targets]
+
+STEPS:
+1. [First step]
+2. [Second step]
+3. [Third step]
+4. [etc...]
+
+TIPS:
+- [Important form tip]
+- [Safety tip]
+- [Performance tip]
+- [etc...]
+
+DIFFICULTY: [Beginner/Intermediate/Advanced]
+
+EQUIPMENT: [Equipment needed, or "None" if bodyweight]
+
+Keep the response concise but comprehensive. Focus on proper form and safety.
+''';
+    try {
+      const String apiKey = 'YOUR_GEMINI_API_KEY_HERE';
+      if (apiKey == 'YOUR_GEMINI_API_KEY_HERE') {
+        return null;
+      }
+      final String url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey';
+      final response = await http.post(
+        Uri.parse(url),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'contents': [{
+            'parts': [{'text': prompt}]
+          }]
+        }),
+      );
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        if (data['candidates'] != null && data['candidates'].isNotEmpty) {
+          final content = data['candidates'][0]['content']['parts'][0]['text'];
+          return _parseAIInstructionResponse(content, exerciseName);
+        }
+      }
+    } catch (e) {}
+    return null;
+  }
+
+  ExerciseInstructions? _parseAIInstructionResponse(String response, String exerciseName) {
+    try {
+      final lines = response.split('\n').where((line) => line.trim().isNotEmpty).toList();
+      String description = '';
+      List<String> steps = [];
+      List<String> tips = [];
+      String difficulty = 'Medium';
+      String equipment = 'Unknown';
+      String currentSection = '';
+      for (String line in lines) {
+        final trimmed = line.trim();
+        if (trimmed.startsWith('DESCRIPTION:')) {
+          description = trimmed.substring(12).trim();
+          currentSection = 'description';
+        } else if (trimmed.startsWith('STEPS:')) {
+          currentSection = 'steps';
+        } else if (trimmed.startsWith('TIPS:')) {
+          currentSection = 'tips';
+        } else if (trimmed.startsWith('DIFFICULTY:')) {
+          difficulty = trimmed.substring(11).trim();
+          currentSection = '';
+        } else if (trimmed.startsWith('EQUIPMENT:')) {
+          equipment = trimmed.substring(10).trim();
+          currentSection = '';
+        } else if (currentSection == 'steps' && (trimmed.startsWith(RegExp(r'\d+\.')) || trimmed.startsWith('-'))) {
+          steps.add(trimmed.replaceFirst(RegExp(r'^\d+\.\s*'), '').replaceFirst(RegExp(r'^-\s*'), ''));
+        } else if (currentSection == 'tips' && trimmed.startsWith('-')) {
+          tips.add(trimmed.substring(1).trim());
+        } else if (currentSection == 'description' && !trimmed.startsWith(RegExp(r'[A-Z]+:'))) {
+          description += ' ' + trimmed;
+        }
+      }
+      if (description.isNotEmpty && steps.isNotEmpty) {
+        return ExerciseInstructions(
+          name: exerciseName,
+          description: description.trim(),
+          steps: steps,
+          tips: tips,
+          difficulty: difficulty,
+          equipment: equipment,
+        );
+      }
+    } catch (e) {}
+    return null;
   }
 
   // Exercise JSON helpers
@@ -977,26 +952,18 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
   // Data Persistence Methods
   Future<void> loadUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Load user profile data
     username = prefs.getString('username') ?? 'Fitness Warrior';
     currentWeight = prefs.getDouble('currentWeight') ?? 0.0;
     goalWeight = prefs.getDouble('goalWeight') ?? 0.0;
     height = prefs.getDouble('height') ?? 0.0;
     age = prefs.getInt('age') ?? 0;
     fitnessGoal = prefs.getString('fitnessGoal') ?? 'Build Muscle';
-    
-    // Load nutrition goals (new system)
     String? nutritionGoalsJson = prefs.getString('nutritionGoals');
     if (nutritionGoalsJson != null) {
       try {
         nutritionGoals = NutritionGoals.fromJson(jsonDecode(nutritionGoalsJson));
-      } catch (e) {
-        print('Error loading nutrition goals: $e');
-        // Keep default goals
-      }
+      } catch (e) {}
     } else {
-      // Legacy loading - convert to new system
       int legacyCalorieGoal = prefs.getInt('calorieGoal') ?? 2200;
       if (nutritionGoals.calories != legacyCalorieGoal) {
         nutritionGoals = NutritionGoals(
@@ -1009,8 +976,6 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
     }
     sleepGoal = prefs.getDouble('sleepGoal') ?? 8.0;
     hoursSlept = prefs.getDouble('hoursSlept') ?? 7.5;
-    
-    // Load ranking data
     totalWorkoutsCompleted = prefs.getInt('totalWorkoutsCompleted') ?? 6;
     String? lastWorkoutString = prefs.getString('lastWorkoutDate');
     if (lastWorkoutString != null) {
@@ -1023,16 +988,28 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
         orElse: () => FitnessRank.tinIII,
       );
     }
-
-    // Load muscle recovery data
+    String? lastNutritionUpdateString = prefs.getString('lastNutritionUpdate');
+    if (lastNutritionUpdateString != null) {
+      lastNutritionUpdate = DateTime.parse(lastNutritionUpdateString);
+    }
+    String? lastSleepWeekUpdateString = prefs.getString('lastSleepWeekUpdate');
+    if (lastSleepWeekUpdateString != null) {
+      lastSleepWeekUpdate = DateTime.parse(lastSleepWeekUpdateString);
+    }
+    // Load weekSleep data
+    List<String>? weekSleepJson = prefs.getStringList('weekSleep');
+    if (weekSleepJson != null) {
+      weekSleep = weekSleepJson.map((json) {
+        final data = jsonDecode(json);
+        return SleepEntry(data['day'], data['hours'].toDouble());
+      }).toList();
+    }
     for (String muscle in muscleLastWorked.keys) {
       String? muscleWorkoutString = prefs.getString('muscle_${muscle}_lastWorked');
       if (muscleWorkoutString != null) {
         muscleLastWorked[muscle] = DateTime.parse(muscleWorkoutString);
       }
     }
-
-    // Load exercise preferences
     final Map<String, Object?> prefsMap = prefs.getKeys().fold<Map<String, Object?>>({}, (map, key) {
       if (key.startsWith('exercise_pref_')) {
         String exerciseName = key.substring('exercise_pref_'.length);
@@ -1041,30 +1018,22 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       return map;
     });
     exercisePreferences = prefsMap.cast<String, int>();
-
-    // Load custom workout pools
     List<String>? customWorkoutJson = prefs.getStringList('custom_workout_pool');
     if (customWorkoutJson != null) {
       customWorkoutPool = customWorkoutJson.map((json) => _exerciseFromJson(jsonDecode(json))).toList();
     }
-
     List<String>? upperBodyJson = prefs.getStringList('upper_body_favorites');
     if (upperBodyJson != null) {
       upperBodyFavorites = upperBodyJson.map((json) => _exerciseFromJson(jsonDecode(json))).toList();
     }
-
     List<String>? lowerBodyJson = prefs.getStringList('lower_body_favorites');
     if (lowerBodyJson != null) {
       lowerBodyFavorites = lowerBodyJson.map((json) => _exerciseFromJson(jsonDecode(json))).toList();
     }
-
-    // Load saved workouts
     List<String>? savedWorkoutsJson = prefs.getStringList('saved_workouts');
     if (savedWorkoutsJson != null) {
       savedWorkouts = savedWorkoutsJson.map((json) => SavedWorkout.fromJson(jsonDecode(json))).toList();
     }
-    
-    // Load custom exercise instructions
     List<String>? customInstructionsJson = prefs.getStringList('custom_exercise_instructions');
     if (customInstructionsJson != null) {
       customExerciseInstructions.clear();
@@ -1074,64 +1043,47 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
           final String key = data['key'];
           final ExerciseInstructions instructions = ExerciseInstructions.fromJson(data['instructions']);
           customExerciseInstructions[key] = instructions;
-        } catch (e) {
-          print('Error loading custom exercise instructions: $e');
-        }
+        } catch (e) {}
       }
     }
-    
-    // Load active workout session data
     hasActiveWorkout = prefs.getBool('hasActiveWorkout') ?? false;
     String? workoutStartString = prefs.getString('workoutStartTime');
     if (workoutStartString != null) {
       workoutStartTime = DateTime.parse(workoutStartString);
     }
     workoutElapsedSeconds = prefs.getInt('workoutElapsedSeconds') ?? 0;
-    
     String? progressDataString = prefs.getString('exerciseProgressData');
     if (progressDataString != null) {
       try {
         exerciseProgressData = Map<String, dynamic>.from(jsonDecode(progressDataString));
       } catch (e) {
-        print('Error loading exercise progress data: $e');
         exerciseProgressData = {};
       }
     }
-    
-    // Load current workout
     List<String>? currentWorkoutJson = prefs.getStringList('current_workout');
     if (currentWorkoutJson != null) {
       currentWorkout = currentWorkoutJson.map((json) => _exerciseFromJson(jsonDecode(json))).toList();
     }
-    
-    // Load equipment data
     for (String key in availableEquipment.keys) {
       bool isAvailable = prefs.getBool('equipment_${key}_available') ?? false;
       availableEquipment[key]!.isAvailable = isAvailable;
-      
       double? maxWeight = prefs.getDouble('equipment_${key}_maxWeight');
       if (maxWeight != null) {
         availableEquipment[key]!.maxWeight = maxWeight;
       }
-      
       List<String>? weightsString = prefs.getStringList('equipment_${key}_weights');
       if (weightsString != null) {
         availableEquipment[key]!.availableWeights = weightsString.map((w) => double.parse(w)).toList();
       }
     }
-    
-    // Load weight tracking data
     String? weightHistoryJson = prefs.getString('exerciseWeightHistory');
     if (weightHistoryJson != null) {
       try {
         exerciseWeightHistory = Map<String, double>.from(jsonDecode(weightHistoryJson));
       } catch (e) {
-        print('Error loading exercise weight history: $e');
         exerciseWeightHistory = {};
       }
     }
-    
-    // Load workout history
     final Map<String, Object?> prefsMap2 = prefs.getKeys().fold<Map<String, Object?>>({}, (map, key) {
       if (key.startsWith('workout_history_')) {
         String exerciseName = key.substring('workout_history_'.length);
@@ -1139,36 +1091,28 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       }
       return map;
     });
-    
     for (String exerciseName in prefsMap2.keys) {
       List<String>? sessionsJson = prefs.getStringList('workout_history_$exerciseName');
       if (sessionsJson != null) {
         workoutHistory[exerciseName] = sessionsJson.map((json) => WorkoutSession.fromJson(jsonDecode(json))).toList();
       }
     }
-    
-    // Load progress tracking data
     String? successStreakJson = prefs.getString('exerciseSuccessStreak');
     if (successStreakJson != null) {
       try {
         exerciseSuccessStreak = Map<String, int>.from(jsonDecode(successStreakJson));
       } catch (e) {
-        print('Error loading exercise success streak: $e');
         exerciseSuccessStreak = {};
       }
     }
-    
     String? failureStreakJson = prefs.getString('exerciseFailureStreak');
     if (failureStreakJson != null) {
       try {
         exerciseFailureStreak = Map<String, int>.from(jsonDecode(failureStreakJson));
       } catch (e) {
-        print('Error loading exercise failure streak: $e');
         exerciseFailureStreak = {};
       }
     }
-    
-    // Load last exercise attempt dates
     final Map<String, Object?> prefsMap3 = prefs.getKeys().fold<Map<String, Object?>>({}, (map, key) {
       if (key.startsWith('last_exercise_attempt_')) {
         String exerciseName = key.substring('last_exercise_attempt_'.length);
@@ -1176,437 +1120,264 @@ Keep the response concise but comprehensive. Focus on proper form and safety.
       }
       return map;
     });
-    
     for (String exerciseName in prefsMap3.keys) {
       String? attemptDateString = prefs.getString('last_exercise_attempt_$exerciseName');
       if (attemptDateString != null) {
         try {
           lastExerciseAttempt[exerciseName] = DateTime.parse(attemptDateString);
-        } catch (e) {
-          print('Error loading last exercise attempt date for $exerciseName: $e');
-        }
+        } catch (e) {}
       }
     }
+    final beforeFoods = todaysFoods.length;
+    final beforeSleep = weekSleep.length;
+    _checkAndResetDailyNutrition();
+    _checkAndResetWeeklySleep();
+    if (todaysFoods.length == 0 && beforeFoods > 0) await saveUserData();
+    if (weekSleep.length == 0 && beforeSleep > 0) await saveUserData();
+    notifyListeners();
   }
 
   Future<void> saveUserData() async {
     final prefs = await SharedPreferences.getInstance();
-    
-    // Save user profile data
     await prefs.setString('username', username);
     await prefs.setDouble('currentWeight', currentWeight);
     await prefs.setDouble('goalWeight', goalWeight);
     await prefs.setDouble('height', height);
     await prefs.setInt('age', age);
     await prefs.setString('fitnessGoal', fitnessGoal);
-    
-    // Save fitness data (new nutrition system)
     await prefs.setInt('calorieGoal', nutritionGoals.calories);
     await prefs.setString('nutritionGoals', jsonEncode(nutritionGoals.toJson()));
     await prefs.setDouble('sleepGoal', sleepGoal);
     await prefs.setDouble('hoursSlept', hoursSlept);
-    
-    // Save ranking data
     await prefs.setInt('totalWorkoutsCompleted', totalWorkoutsCompleted);
     await prefs.setString('lastWorkoutDate', lastWorkoutDate.toIso8601String());
     await prefs.setString('currentRank', currentRank.name);
-
-    // Save muscle recovery data
+    await prefs.setString('lastNutritionUpdate', lastNutritionUpdate.toIso8601String());
+    await prefs.setString('lastSleepWeekUpdate', lastSleepWeekUpdate.toIso8601String());
+    // Save weekSleep data
+    List<String> weekSleepJson = weekSleep.map((sleep) => jsonEncode({
+      'day': sleep.day,
+      'hours': sleep.hours,
+    })).toList();
+    await prefs.setStringList('weekSleep', weekSleepJson);
     for (String muscle in muscleLastWorked.keys) {
       await prefs.setString('muscle_${muscle}_lastWorked', muscleLastWorked[muscle]!.toIso8601String());
     }
-
-    // Save exercise preferences
     for (String exerciseName in exercisePreferences.keys) {
       await prefs.setInt('exercise_pref_$exerciseName', exercisePreferences[exerciseName]!);
     }
-
-    // Save custom workout pools
-    await prefs.setStringList('custom_workout_pool', 
-      customWorkoutPool.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
-    
-    await prefs.setStringList('upper_body_favorites', 
-      upperBodyFavorites.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
-    
-    await prefs.setStringList('lower_body_favorites', 
-      lowerBodyFavorites.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
-
-    // Save saved workouts
-    await prefs.setStringList('saved_workouts', 
-      savedWorkouts.map((workout) => jsonEncode(workout.toJson())).toList());
-    
-    // Save custom exercise instructions
-    await prefs.setStringList('custom_exercise_instructions', 
-      customExerciseInstructions.entries.map((entry) => 
-        jsonEncode({
-          'key': entry.key,
-          'instructions': entry.value.toJson(),
-        })
-      ).toList());
-    
-    // Save active workout session data
+    await prefs.setStringList('custom_workout_pool', customWorkoutPool.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
+    await prefs.setStringList('upper_body_favorites', upperBodyFavorites.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
+    await prefs.setStringList('lower_body_favorites', lowerBodyFavorites.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
+    await prefs.setStringList('saved_workouts', savedWorkouts.map((workout) => jsonEncode(workout.toJson())).toList());
+    await prefs.setStringList('custom_exercise_instructions', customExerciseInstructions.entries.map((entry) => jsonEncode({'key': entry.key, 'instructions': entry.value.toJson(),})).toList());
     await prefs.setBool('hasActiveWorkout', hasActiveWorkout);
     if (workoutStartTime != null) {
       await prefs.setString('workoutStartTime', workoutStartTime!.toIso8601String());
     }
     await prefs.setInt('workoutElapsedSeconds', workoutElapsedSeconds);
     await prefs.setString('exerciseProgressData', jsonEncode(exerciseProgressData));
-    
-    // Save current workout
-    await prefs.setStringList('current_workout', 
-      currentWorkout.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
-    
-    // Save equipment data
+    await prefs.setStringList('current_workout', currentWorkout.map((ex) => jsonEncode(_exerciseToJson(ex))).toList());
     for (String key in availableEquipment.keys) {
       await prefs.setBool('equipment_${key}_available', availableEquipment[key]!.isAvailable);
       if (availableEquipment[key]!.maxWeight != null) {
         await prefs.setDouble('equipment_${key}_maxWeight', availableEquipment[key]!.maxWeight!);
       }
       if (availableEquipment[key]!.availableWeights.isNotEmpty) {
-        await prefs.setStringList('equipment_${key}_weights', 
-          availableEquipment[key]!.availableWeights.map((w) => w.toString()).toList());
+        await prefs.setStringList('equipment_${key}_weights', availableEquipment[key]!.availableWeights.map((w) => w.toString()).toList());
       }
     }
-    
-    // Save weight tracking data
     await prefs.setString('exerciseWeightHistory', jsonEncode(exerciseWeightHistory));
-    
-    // Save workout history
     for (String exerciseName in workoutHistory.keys) {
-      await prefs.setStringList('workout_history_$exerciseName', 
-        workoutHistory[exerciseName]!.map((session) => jsonEncode(session.toJson())).toList());
+      await prefs.setStringList('workout_history_$exerciseName', workoutHistory[exerciseName]!.map((session) => jsonEncode(session.toJson())).toList());
     }
-    
-    // Save progress tracking data
     await prefs.setString('exerciseSuccessStreak', jsonEncode(exerciseSuccessStreak));
     await prefs.setString('exerciseFailureStreak', jsonEncode(exerciseFailureStreak));
-    
     for (String exerciseName in lastExerciseAttempt.keys) {
-      await prefs.setString('last_exercise_attempt_$exerciseName', 
-        lastExerciseAttempt[exerciseName]!.toIso8601String());
+      await prefs.setString('last_exercise_attempt_$exerciseName', lastExerciseAttempt[exerciseName]!.toIso8601String());
     }
   }
-  
+
   // Reset all user data to fresh first-time user state
-  Future<void> resetToFirstTimeUser() async {
+  Future<void> resetToFirstTimeUser({bool blank = false}) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      
-      // Clear all SharedPreferences data
       await prefs.clear();
-      
-      // Reset all in-memory data to default values
-      _resetToDefaults();
-      
-      // Save the default state
+      _resetToDefaults(blank: blank);
       await saveUserData();
-      
-      // Force reload data to ensure consistency
       await loadUserData();
-      
-      // Trigger UI updates
-      onWorkoutChanged?.call();
-      onCaloriesChanged?.call();
-      onSleepChanged?.call();
-      onRankChanged?.call();
-      onEquipmentChanged?.call();
-      onProfileChanged?.call();
-      
-      print('App data reset completed successfully');
+      notifyListeners();
     } catch (e) {
-      print('Error during app reset: $e');
-      // If there's an error, try a more aggressive reset
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.clear();
-        _resetToDefaults();
-        print('Fallback reset completed');
+        _resetToDefaults(blank: blank);
       } catch (fallbackError) {
-        print('Fallback reset also failed: $fallbackError');
         rethrow;
       }
     }
   }
-  
-  void _resetToDefaults() {
+
+  Future<void> hardResetToFirstTimeUser() async {
+    await resetToFirstTimeUser(blank: true);
+  }
+
+  void _resetToDefaults({bool blank = false}) {
     try {
-      // Reset workout data to default
+      if (blank) {
+        username = '';
+        currentWeight = 0.0;
+        goalWeight = 0.0;
+        height = 0.0;
+        age = 0;
+        fitnessGoal = '';
+        joinDate = DateTime.now();
+        nutritionGoals = NutritionGoals(calories: 0, protein: 0, carbs: 0, fat: 0);
+        todaysFoods = [];
+        recentFoods = [];
+        favoriteFoods = [];
+        quickAddFoods = [];
+        foodSearchHistory = {};
+        sleepGoal = 0.0;
+        hoursSlept = 0.0;
+        weekSleep = [];
+        totalWorkoutsCompleted = 0;
+        lastWorkoutDate = DateTime.now();
+        currentRank = FitnessRank.tinIII;
+        availableEquipment = {};
+        muscleLastWorked = {};
+        exercisePreferences = {};
+        currentWorkout = [];
+        customWorkoutPool = [];
+        upperBodyFavorites = [];
+        lowerBodyFavorites = [];
+        savedWorkouts = [];
+        customExerciseInstructions = {};
+        exerciseWeightHistory = {};
+        workoutHistory = {};
+        exerciseSuccessStreak = {};
+        exerciseFailureStreak = {};
+        lastExerciseAttempt = {};
+        hasActiveWorkout = false;
+        workoutStartTime = null;
+        workoutElapsedSeconds = 0;
+        exerciseProgressData = {};
+        return;
+      }
       currentWorkout = [
         Exercise('Push-ups', 'Chest, Triceps, Shoulders'),
         Exercise('Squats', 'Legs, Glutes'),
         Exercise('Pull-ups', 'Back, Biceps'),
         Exercise('Plank', 'Core'),
       ];
-
-      // Reset nutrition data
       nutritionGoals = NutritionGoals(
         calories: 2200,
         protein: 150.0,
         carbs: 220.0,
         fat: 75.0,
       );
-      todaysFoods = [
-        FoodEntry('Oatmeal with berries', 320, protein: 8.0, carbs: 58.0, fat: 6.0, mealType: MealType.breakfast),
-        FoodEntry('Grilled chicken salad', 450, protein: 35.0, carbs: 15.0, fat: 28.0, mealType: MealType.lunch),
-        FoodEntry('Greek yogurt', 150, protein: 15.0, carbs: 12.0, fat: 6.0, mealType: MealType.snack),
-        FoodEntry('Banana', 105, protein: 1.3, carbs: 27.0, fat: 0.4, mealType: MealType.snack),
-        FoodEntry('Almonds (1 oz)', 160, protein: 6.0, carbs: 6.0, fat: 14.0, mealType: MealType.snack),
-        FoodEntry('Protein shake', 265, protein: 25.0, carbs: 8.0, fat: 3.0, mealType: MealType.snack),
+      todaysFoods = [];
+      recentFoods = [];
+      favoriteFoods = [];
+      quickAddFoods = [];
+      foodSearchHistory = {};
+      sleepGoal = 8.0;
+      hoursSlept = 7.5;
+      weekSleep = [];
+      totalWorkoutsCompleted = 0;
+      lastWorkoutDate = DateTime.now();
+      currentRank = FitnessRank.tinIII;
+      availableEquipment = {
+        'dumbbells': EquipmentItem('Dumbbells', false, maxWeight: 50),
+        'barbells': EquipmentItem('Barbells', false, maxWeight: 135),
+        'pullup_bar': EquipmentItem('Pull-up Bar', false),
+        'flat_bench': EquipmentItem('Flat Bench', false),
+        'adjustable_bench': EquipmentItem('Adjustable Bench (Incline/Decline)', false),
+        'bench_press': EquipmentItem('Bench Press Station', false, maxWeight: 225),
+        'squat_rack': EquipmentItem('Squat Rack', false, maxWeight: 315),
+        'cable_machine': EquipmentItem('Cable Machine', false, maxWeight: 200),
+        'leg_press': EquipmentItem('Leg Press Machine', false, maxWeight: 400),
+        'lat_pulldown': EquipmentItem('Lat Pulldown Machine', false, maxWeight: 150),
+        'rowing_machine': EquipmentItem('Rowing Machine', false),
+        'treadmill': EquipmentItem('Treadmill', false),
+        'stationary_bike': EquipmentItem('Stationary Bike', false),
+        'kettlebells': EquipmentItem('Kettlebells', false, maxWeight: 35),
+        'resistance_bands': EquipmentItem('Resistance Bands', false),
+        'medicine_ball': EquipmentItem('Medicine Ball', false, maxWeight: 20),
+        'foam_roller': EquipmentItem('Foam Roller', false),
+        'yoga_mat': EquipmentItem('Yoga Mat', false),
+        'ab_wheel': EquipmentItem('Ab Wheel', false),
+      };
+      username = 'Fitness Warrior';
+      currentWeight = 0.0;
+      goalWeight = 0.0;
+      height = 0.0;
+      age = 0;
+      fitnessGoal = 'Build Muscle';
+      joinDate = DateTime.now();
+      muscleLastWorked = {
+        'chest': DateTime.now().subtract(const Duration(days: 3)),
+        'back': DateTime.now().subtract(const Duration(days: 3)),
+        'shoulders': DateTime.now().subtract(const Duration(days: 2)),
+        'biceps': DateTime.now().subtract(const Duration(days: 2)),
+        'triceps': DateTime.now().subtract(const Duration(days: 2)),
+        'legs': DateTime.now().subtract(const Duration(days: 4)),
+        'glutes': DateTime.now().subtract(const Duration(days: 3)),
+        'core': DateTime.now().subtract(const Duration(days: 1)),
+        'calves': DateTime.now().subtract(const Duration(days: 3)),
+        'forearms': DateTime.now().subtract(const Duration(days: 3)),
+      };
+      exercisePreferences = {};
+      customWorkoutPool = [];
+      upperBodyFavorites = [];
+      lowerBodyFavorites = [];
+      savedWorkouts = [];
+      customExerciseInstructions = {};
+      exerciseWeightHistory = {};
+      workoutHistory = {};
+      exerciseSuccessStreak = {};
+      exerciseFailureStreak = {};
+      lastExerciseAttempt = {};
+      hasActiveWorkout = false;
+      workoutStartTime = null;
+      workoutElapsedSeconds = 0;
+      exerciseProgressData = {};
+    } catch (e) {
+      currentWorkout = [Exercise('Push-ups', 'Chest, Triceps, Shoulders')];
+      nutritionGoals = NutritionGoals(calories: 2200, protein: 150.0, carbs: 220.0, fat: 75.0);
+      hasActiveWorkout = false;
+      exerciseProgressData = {};
+    }
+  }
+
+  // --- Automatic Resets ---
+  void _checkAndResetDailyNutrition() {
+    final now = DateTime.now();
+    if (now.year != lastNutritionUpdate.year || now.month != lastNutritionUpdate.month || now.day != lastNutritionUpdate.day) {
+      todaysFoods = [];
+      lastNutritionUpdate = now;
+    }
+  }
+
+  void _checkAndResetWeeklySleep() {
+    final now = DateTime.now();
+    int weekNumber(DateTime d) {
+      final firstDayOfYear = DateTime(d.year, 1, 1);
+      final daysOffset = firstDayOfYear.weekday - 1;
+      final firstMonday = firstDayOfYear.subtract(Duration(days: daysOffset));
+      return ((d.difference(firstMonday).inDays) / 7).floor() + 1;
+    }
+    if (weekNumber(now) != weekNumber(lastSleepWeekUpdate) || now.year != lastSleepWeekUpdate.year) {
+      weekSleep = [
+        SleepEntry('Monday', 0.0),
+        SleepEntry('Tuesday', 0.0),
+        SleepEntry('Wednesday', 0.0),
+        SleepEntry('Thursday', 0.0),
+        SleepEntry('Friday', 0.0),
+        SleepEntry('Saturday', 0.0),
+        SleepEntry('Sunday', 0.0),
       ];
-    
-    // Reset food tracking lists
-    recentFoods = [];
-    favoriteFoods = [];
-    quickAddFoods = [];
-    foodSearchHistory = {};
-
-    // Reset sleep data
-    sleepGoal = 8.0;
-    hoursSlept = 7.5;
-    weekSleep = [
-      SleepEntry('Monday', 7.0),
-      SleepEntry('Tuesday', 8.2),
-      SleepEntry('Wednesday', 6.5),
-      SleepEntry('Thursday', 7.8),
-      SleepEntry('Friday', 7.2),
-      SleepEntry('Saturday', 9.0),
-      SleepEntry('Sunday', 8.5),
-    ];
-
-    // Reset ranking system data
-    totalWorkoutsCompleted = 0;
-    lastWorkoutDate = DateTime.now();
-    currentRank = FitnessRank.tinIII;
-
-    // Reset available equipment data
-    availableEquipment = {
-      'dumbbells': EquipmentItem('Dumbbells', false, maxWeight: 50),
-      'barbells': EquipmentItem('Barbells', false, maxWeight: 135),
-      'pullup_bar': EquipmentItem('Pull-up Bar', false),
-      'flat_bench': EquipmentItem('Flat Bench', false),
-      'adjustable_bench': EquipmentItem('Adjustable Bench (Incline/Decline)', false),
-      'bench_press': EquipmentItem('Bench Press Station', false, maxWeight: 225),
-      'squat_rack': EquipmentItem('Squat Rack', false, maxWeight: 315),
-      'cable_machine': EquipmentItem('Cable Machine', false, maxWeight: 200),
-      'leg_press': EquipmentItem('Leg Press Machine', false, maxWeight: 400),
-      'lat_pulldown': EquipmentItem('Lat Pulldown Machine', false, maxWeight: 150),
-      'rowing_machine': EquipmentItem('Rowing Machine', false),
-      'treadmill': EquipmentItem('Treadmill', false),
-      'stationary_bike': EquipmentItem('Stationary Bike', false),
-      'kettlebells': EquipmentItem('Kettlebells', false, maxWeight: 35),
-      'resistance_bands': EquipmentItem('Resistance Bands', false),
-      'medicine_ball': EquipmentItem('Medicine Ball', false, maxWeight: 20),
-      'foam_roller': EquipmentItem('Foam Roller', false),
-      'yoga_mat': EquipmentItem('Yoga Mat', false),
-      'ab_wheel': EquipmentItem('Ab Wheel', false),
-    };
-
-    // Reset user profile data
-    username = 'Fitness Warrior';
-    currentWeight = 0.0;
-    goalWeight = 0.0;
-    height = 0.0;
-    age = 0;
-    fitnessGoal = 'Build Muscle';
-    joinDate = DateTime.now();
-
-    // Reset muscle recovery tracking
-    muscleLastWorked = {
-      'chest': DateTime.now().subtract(const Duration(days: 3)),
-      'back': DateTime.now().subtract(const Duration(days: 3)),
-      'shoulders': DateTime.now().subtract(const Duration(days: 2)),
-      'biceps': DateTime.now().subtract(const Duration(days: 2)),
-      'triceps': DateTime.now().subtract(const Duration(days: 2)),
-      'legs': DateTime.now().subtract(const Duration(days: 4)),
-      'glutes': DateTime.now().subtract(const Duration(days: 3)),
-      'core': DateTime.now().subtract(const Duration(days: 1)),
-      'calves': DateTime.now().subtract(const Duration(days: 3)),
-      'forearms': DateTime.now().subtract(const Duration(days: 3)),
-    };
-
-    // Reset exercise preferences and custom workouts
-    exercisePreferences = {};
-    customWorkoutPool = [];
-    upperBodyFavorites = [];
-    lowerBodyFavorites = [];
-    savedWorkouts = [];
-    customExerciseInstructions = {};
-    
-    // Reset weight tracking and progress management
-    exerciseWeightHistory = {};
-    workoutHistory = {};
-    exerciseSuccessStreak = {};
-    exerciseFailureStreak = {};
-    lastExerciseAttempt = {};
-    
-    // Reset active workout session persistence
-    hasActiveWorkout = false;
-    workoutStartTime = null;
-    workoutElapsedSeconds = 0;
-    exerciseProgressData = {};
-    
-    print('All data reset to defaults successfully');
-  } catch (e) {
-    print('Error in _resetToDefaults: $e');
-    // Ensure critical data is reset even if there's an error
-    currentWorkout = [Exercise('Push-ups', 'Chest, Triceps, Shoulders')];
-    nutritionGoals = NutritionGoals(calories: 2200, protein: 150.0, carbs: 220.0, fat: 75.0);
-    hasActiveWorkout = false;
-    exerciseProgressData = {};
-  }
-
-  // Weight Management and Progress Tracking Methods
-  void markExerciseTooHeavy(String exerciseName, double currentWeight) {
-    // Reduce weight by 10% for next attempt (safe progressive overload)
-    final reducedWeight = (currentWeight * 0.9).roundToDouble();
-    exerciseWeightHistory[exerciseName] = reducedWeight;
-    
-    // Update failure streak
-    exerciseFailureStreak[exerciseName] = (exerciseFailureStreak[exerciseName] ?? 0) + 1;
-    exerciseSuccessStreak[exerciseName] = 0; // Reset success streak
-    
-    // Update last attempt
-    lastExerciseAttempt[exerciseName] = DateTime.now();
-    
-    saveUserData();
-  }
-  
-  void recordWorkoutSession(String exerciseName, double weight, int sets, int reps, 
-                          int completedSets, int completedReps, bool wasTooHeavy, int totalTime) {
-    final session = WorkoutSession(
-      name: exerciseName,
-      date: DateTime.now(),
-      exercises: [Exercise(exerciseName, 'Various muscles', sets: sets, reps: reps, weight: weight)],
-      durationMinutes: totalTime ~/ 60,
-      completed: completedSets >= sets && completedReps >= reps,
-      completedSets: completedSets,
-      completedReps: completedReps,
-    );
-    
-    // Add to workout history
-    if (!workoutHistory.containsKey(exerciseName)) {
-      workoutHistory[exerciseName] = [];
+      lastSleepWeekUpdate = now;
     }
-    workoutHistory[exerciseName]!.add(session);
-    
-    // Keep only last 20 sessions per exercise
-    if (workoutHistory[exerciseName]!.length > 20) {
-      workoutHistory[exerciseName]!.removeAt(0);
-    }
-    
-    // Update weight history
-    exerciseWeightHistory[exerciseName] = weight;
-    
-    // Update streaks
-    if (wasTooHeavy) {
-      exerciseFailureStreak[exerciseName] = (exerciseFailureStreak[exerciseName] ?? 0) + 1;
-      exerciseSuccessStreak[exerciseName] = 0;
-    } else if (completedSets >= sets && completedReps >= reps) {
-      exerciseSuccessStreak[exerciseName] = (exerciseSuccessStreak[exerciseName] ?? 0) + 1;
-      exerciseFailureStreak[exerciseName] = 0;
-    }
-    
-    lastExerciseAttempt[exerciseName] = DateTime.now();
-    
-    saveUserData();
   }
-  
-  double getRecommendedWeight(String exerciseName, double defaultWeight) {
-    // Check if we have history for this exercise
-    if (exerciseWeightHistory.containsKey(exerciseName)) {
-      final lastWeight = exerciseWeightHistory[exerciseName]!;
-      final failureStreak = exerciseFailureStreak[exerciseName] ?? 0;
-      final successStreak = exerciseSuccessStreak[exerciseName] ?? 0;
-      
-      // If user has been failing, keep the reduced weight
-      if (failureStreak > 0) {
-        return lastWeight;
-      }
-      
-      // If user has been successful for 3+ sessions, suggest a small increase
-      if (successStreak >= 3) {
-        // Safe progressive overload: increase by 5-10%
-        final increase = lastWeight * 0.05; // 5% increase
-        return (lastWeight + increase).roundToDouble();
-      }
-      
-      // Otherwise, use the last successful weight
-      return lastWeight;
-    }
-    
-    // No history, use default weight
-    return defaultWeight;
-  }
-  
-  bool shouldIncreaseWeight(String exerciseName) {
-    final successStreak = exerciseSuccessStreak[exerciseName] ?? 0;
-    final failureStreak = exerciseFailureStreak[exerciseName] ?? 0;
-    
-    // Increase weight if user has been successful for 3+ sessions and no recent failures
-    return successStreak >= 3 && failureStreak == 0;
-  }
-  
-  double getSafeWeightIncrease(String exerciseName) {
-    final currentWeight = exerciseWeightHistory[exerciseName] ?? 0;
-    if (currentWeight <= 0) return 0;
-    
-    // Conservative weight increase: 5% for most exercises
-    double increasePercentage = 0.05;
-    
-    // More conservative for heavy compound movements
-    final exerciseNameLower = exerciseName.toLowerCase();
-    if (exerciseNameLower.contains('deadlift') || 
-        exerciseNameLower.contains('squat') || 
-        exerciseNameLower.contains('bench press')) {
-      increasePercentage = 0.03; // 3% for heavy compounds
-    }
-    
-    return (currentWeight * increasePercentage).roundToDouble();
-  }
-  
-  List<WorkoutSession> getExerciseHistory(String exerciseName) {
-    return workoutHistory[exerciseName] ?? [];
-  }
-  
-  double getExerciseProgress(String exerciseName) {
-    final history = getExerciseHistory(exerciseName);
-    if (history.isEmpty) return 0.0;
-    
-    // Calculate progress based on weight progression and completion rate
-    double totalProgress = 0.0;
-    int sessionCount = 0;
-    
-    for (int i = 1; i < history.length; i++) {
-      final current = history[i];
-      final previous = history[i - 1];
-      
-      // Weight progression - get weight from first exercise
-      final currentWeight = current.exercises.isNotEmpty ? current.exercises.first.weight : 0.0;
-      final previousWeight = previous.exercises.isNotEmpty ? previous.exercises.first.weight : 0.0;
-      if (currentWeight > previousWeight) {
-        totalProgress += 1.0;
-      }
-      
-      // Completion rate
-      final completionRate = (current.completedSets / (current.exercises.isNotEmpty ? current.exercises.first.sets : 1)) * 
-                           (current.completedReps / (current.exercises.isNotEmpty ? current.exercises.first.reps : 1));
-      totalProgress += completionRate;
-      
-      sessionCount++;
-    }
-    
-    return sessionCount > 0 ? totalProgress / sessionCount : 0.0;
-  }
-
-  // Get current workout as formatted string for AI responses
-  String getCurrentWorkoutString() {
-    if (currentWorkout.isEmpty) {
-      return "No workout currently set. Let me create one for you!";
-    }
-    
-    return currentWorkout.map((exercise) {
-      String weightText = exercise.weight > 0 ? ' @ ${exercise.weight} lbs' : ' @ bodyweight';
-      return '${exercise.name}: ${exercise.sets} × ${exercise.reps}$weightText';
-    }).join('\n');
-  }
-}
+} 

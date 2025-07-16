@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../widgets/fitnessscorecard_widget.dart';
+import 'package:provider/provider.dart';
 
 class FitnessScoreSection extends StatefulWidget {
   const FitnessScoreSection({super.key});
@@ -10,15 +11,7 @@ class FitnessScoreSection extends StatefulWidget {
 }
 
 class _FitnessScoreSectionState extends State<FitnessScoreSection> {
-  final FitnessDataManager dataManager = FitnessDataManager();
-
-  @override
-  void initState() {
-    super.initState();
-    dataManager.onWorkoutChanged = () => setState(() {});
-    dataManager.onSleepChanged = () => setState(() {});
-    dataManager.onCaloriesChanged = () => setState(() {});
-  }
+  FitnessDataProvider get dataManager => context.watch<FitnessDataProvider>();
 
   @override
   Widget build(BuildContext context) {
@@ -98,88 +91,142 @@ class _FitnessScoreSectionState extends State<FitnessScoreSection> {
     );
   }
 
-  Map<String, double> _calculateFitnessScores() {
-    // Workout Readiness Score (0-100%)
-    double readiness = _calculateWorkoutReadiness();
-    
-    // Performance Growth Scores (can exceed 100%)
-    double liftingGrowth = _calculateLiftingGrowth();
-    double cardioGrowth = _calculateCardioGrowth();
-    double overallGrowth = (liftingGrowth + cardioGrowth) / 2;
-    
+  // --- Helper methods for real analytics ---
+  DateTime? get _lastWorkoutDate {
+    final allSessions = dataManager.workoutHistory.values.expand((s) => s).toList();
+    if (allSessions.isEmpty) return null;
+    allSessions.sort((a, b) => b.date.compareTo(a.date));
+    return allSessions.first.date;
+  }
+
+  DateTime? get _firstWorkoutDate {
+    final allSessions = dataManager.workoutHistory.values.expand((s) => s).toList();
+    if (allSessions.isEmpty) return null;
+    allSessions.sort((a, b) => a.date.compareTo(b.date));
+    return allSessions.first.date;
+  }
+
+  Map<String, double> get _personalRecords {
+    double bench = 0, squat = 0, deadlift = 0;
+    int bestCardio = 0; // in minutes
+    for (final sessions in dataManager.workoutHistory.values) {
+      for (final s in sessions) {
+        for (final e in s.exercises) {
+          final name = e.name.toLowerCase();
+          if (name.contains('bench')) {
+            if (e.weight > bench) bench = e.weight;
+          } else if (name.contains('squat')) {
+            if (e.weight > squat) squat = e.weight;
+          } else if (name.contains('deadlift')) {
+            if (e.weight > deadlift) deadlift = e.weight;
+          } else if (name.contains('run') || name.contains('cardio') || name.contains('treadmill') || name.contains('bike')) {
+            if (s.durationMinutes > bestCardio) bestCardio = s.durationMinutes;
+          }
+        }
+      }
+    }
     return {
-      'readiness': readiness,
-      'lifting': liftingGrowth,
-      'cardio': cardioGrowth,
-      'overall': overallGrowth,
+      'bench': bench,
+      'squat': squat,
+      'deadlift': deadlift,
+      'cardio': bestCardio.toDouble(),
     };
+  }
+
+  Map<String, double> _getInitialLiftingPRs() {
+    // Use the user's first workout for initial PRs, or fallback to 1 if not available
+    double bench = 1, squat = 1, deadlift = 1;
+    final firstDate = _firstWorkoutDate;
+    if (firstDate != null) {
+      final firstSessions = dataManager.workoutHistory.values.expand((s) => s).where((s) => s.date == firstDate).toList();
+      for (final s in firstSessions) {
+        for (final e in s.exercises) {
+          final name = e.name.toLowerCase();
+          if (name.contains('bench') && e.weight > bench) bench = e.weight;
+          else if (name.contains('squat') && e.weight > squat) squat = e.weight;
+          else if (name.contains('deadlift') && e.weight > deadlift) deadlift = e.weight;
+        }
+      }
+    }
+    return {'bench': bench, 'squat': squat, 'deadlift': deadlift};
+  }
+
+  double _calculateLiftingGrowth() {
+    final current = _personalRecords;
+    final initial = _getInitialLiftingPRs();
+    double benchProgress = initial['bench']! > 0 ? current['bench']! / initial['bench']! : 1.0;
+    double squatProgress = initial['squat']! > 0 ? current['squat']! / initial['squat']! : 1.0;
+    double deadliftProgress = initial['deadlift']! > 0 ? current['deadlift']! / initial['deadlift']! : 1.0;
+    double avgProgress = (benchProgress + squatProgress + deadliftProgress) / 3;
+    return (avgProgress * 100).clamp(50, 200);
+  }
+
+  double _calculateCardioGrowth() {
+    final current = _personalRecords['cardio'] ?? 0;
+    double initial = 1;
+    final firstDate = _firstWorkoutDate;
+    if (firstDate != null) {
+      final firstSessions = dataManager.workoutHistory.values.expand((s) => s).where((s) => s.date == firstDate).toList();
+      for (final s in firstSessions) {
+        if (s.durationMinutes > initial) initial = s.durationMinutes.toDouble();
+      }
+    }
+    if (initial <= 0) initial = 1;
+    double progress = current / initial;
+    return (progress * 100).clamp(50, 200);
   }
 
   double _calculateWorkoutReadiness() {
     double sleepScore = 0;
     double recoveryScore = 0;
     double nutritionScore = 0;
-    
     // Sleep Score (40% of readiness)
     double sleepHours = dataManager.hoursSlept;
     if (sleepHours >= 8.0) {
       sleepScore = 40;
     } else if (sleepHours >= 7.0) {
-      sleepScore = 30 + (sleepHours - 7.0) * 10; // 30-40 for 7-8 hours
+      sleepScore = 30 + (sleepHours - 7.0) * 10;
     } else if (sleepHours >= 6.0) {
-      sleepScore = 15 + (sleepHours - 6.0) * 15; // 15-30 for 6-7 hours
+      sleepScore = 15 + (sleepHours - 6.0) * 15;
     } else {
-      sleepScore = sleepHours * 2.5; // 0-15 for <6 hours
+      sleepScore = sleepHours * 2.5;
     }
-    
     // Recovery Score (35% of readiness) - days since last workout
     DateTime now = DateTime.now();
-    DateTime lastWorkout = now.subtract(const Duration(days: 1)); // Assume last workout was yesterday
-    int daysSinceWorkout = now.difference(lastWorkout).inDays;
-    
+    DateTime? lastWorkout = _lastWorkoutDate;
+    int daysSinceWorkout = lastWorkout != null ? now.difference(lastWorkout).inDays : 99;
     if (daysSinceWorkout == 1) {
-      recoveryScore = 35; // Perfect recovery time
+      recoveryScore = 35;
     } else if (daysSinceWorkout == 0) {
-      recoveryScore = 20; // Worked out today, might be tired
+      recoveryScore = 20;
     } else if (daysSinceWorkout == 2) {
-      recoveryScore = 30; // Good recovery
+      recoveryScore = 30;
     } else if (daysSinceWorkout >= 3) {
-      recoveryScore = 25; // Too much rest, might be deconditioning
+      recoveryScore = 25;
     }
-    
     // Nutrition Score (25% of readiness)
-    double calorieRatio = dataManager.caloriesConsumed / dataManager.calorieGoal;
+    double calorieRatio = dataManager.caloriesConsumed / (dataManager.calorieGoal > 0 ? dataManager.calorieGoal : 1);
     if (calorieRatio >= 0.8 && calorieRatio <= 1.2) {
-      nutritionScore = 25; // Good calorie balance
+      nutritionScore = 25;
     } else if (calorieRatio >= 0.6 && calorieRatio <= 1.4) {
-      nutritionScore = 20; // Okay balance
+      nutritionScore = 20;
     } else {
-      nutritionScore = 10; // Poor balance
+      nutritionScore = 10;
     }
-    
     return (sleepScore + recoveryScore + nutritionScore).clamp(0, 100);
   }
 
-  double _calculateLiftingGrowth() {
-    // Based on progression from initial values
-    // Starting values: Bench 135lbs, Squats 185lbs, Deadlifts 225lbs
-    double benchProgress = 140 / 135; // Current vs starting
-    double squatProgress = 195 / 185; // Assuming progression based on recommendations
-    double deadliftProgress = 235 / 225;
-    
-    double avgProgress = (benchProgress + squatProgress + deadliftProgress) / 3;
-    return (avgProgress * 100).clamp(50, 200); // 50-200% range
-  }
-
-  double _calculateCardioGrowth() {
-    // Based on cardio endurance improvements
-    // Starting: 20 min treadmill, now can do 22+ min
-    double enduranceImprovement = 22 / 20; // 10% improvement
-    
-    // Factor in consistency (6 workouts in 2 weeks is excellent)
-    double consistencyBonus = 1.1; // 10% bonus for consistency
-    
-    return (enduranceImprovement * consistencyBonus * 100).clamp(50, 200);
+  Map<String, double> _calculateFitnessScores() {
+    double readiness = _calculateWorkoutReadiness();
+    double liftingGrowth = _calculateLiftingGrowth();
+    double cardioGrowth = _calculateCardioGrowth();
+    double overallGrowth = (liftingGrowth + cardioGrowth) / 2;
+    return {
+      'readiness': readiness,
+      'lifting': liftingGrowth,
+      'cardio': cardioGrowth,
+      'overall': overallGrowth,
+    };
   }
 
   Color _getReadinessColor(double score) {

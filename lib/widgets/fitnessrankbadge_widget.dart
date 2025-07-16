@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 
 class FitnessRankBadge extends StatefulWidget {
   const FitnessRankBadge({super.key});
@@ -10,12 +11,9 @@ class FitnessRankBadge extends StatefulWidget {
 }
 
 class _FitnessRankBadgeState extends State<FitnessRankBadge> {
-  final FitnessDataManager dataManager = FitnessDataManager();
-
   @override
   void initState() {
     super.initState();
-    dataManager.onRankChanged = () => setState(() {});
   }
 
   @override
@@ -25,23 +23,23 @@ class _FitnessRankBadgeState extends State<FitnessRankBadge> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
-            color: dataManager.getRankColor().withOpacity(0.1),
+            color: context.watch<FitnessDataProvider>().getRankColor().withOpacity(0.1),
             borderRadius: BorderRadius.circular(20),
-            border: Border.all(color: dataManager.getRankColor(), width: 2),
+            border: Border.all(color: context.watch<FitnessDataProvider>().getRankColor(), width: 2),
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               SvgPicture.asset(
-                dataManager.getRankIconPath(),
+                context.watch<FitnessDataProvider>().getRankIconPath(),
                 width: 20,
                 height: 20,
               ),
               const SizedBox(width: 6),
               Text(
-                dataManager.getRankDisplayName(),
+                context.watch<FitnessDataProvider>().getRankDisplayName(),
                 style: TextStyle(
-                  color: dataManager.getRankColor(),
+                  color: context.watch<FitnessDataProvider>().getRankColor(),
                   fontWeight: FontWeight.bold,
                   fontSize: 12,
                 ),

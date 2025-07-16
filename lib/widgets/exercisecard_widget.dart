@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 
 
@@ -20,10 +21,9 @@ class ExerciseCard extends StatefulWidget {
 }
 
 class _ExerciseCardState extends State<ExerciseCard> {
-  final dataManager = FitnessDataManager();
-
   @override
   Widget build(BuildContext context) {
+    final dataManager = context.watch<FitnessDataProvider>();
     return Card(
       margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
       child: Padding(

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import '../widgets/milestonecard_widget.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
+import '../models/fitness_models.dart';
 
 
 class ProgressScreen extends StatefulWidget {
@@ -11,10 +14,27 @@ class ProgressScreen extends StatefulWidget {
 
 class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStateMixin {
   late TabController _tabController;
-  
-  // Simulated user start date (2 weeks ago)
-  final DateTime userStartDate = DateTime.now().subtract(const Duration(days: 14));
-  final int totalWorkouts = 6; // From our sample data
+
+  DateTime get userStartDate {
+    // Use the earliest workout date, or today if none
+    final allWorkouts = _allWorkoutDates();
+    if (allWorkouts.isEmpty) return DateTime.now();
+    allWorkouts.sort();
+    return allWorkouts.first;
+  }
+
+  int get totalWorkouts {
+    final dataProvider = context.watch<FitnessDataProvider>();
+    return dataProvider.workoutHistory.values.expand((s) => s).length;
+  }
+
+  int get daysSinceStart => DateTime.now().difference(userStartDate).inDays;
+  int get weeksSinceStart => (daysSinceStart / 7).floor();
+
+  List<DateTime> _allWorkoutDates() {
+    final dataProvider = context.watch<FitnessDataProvider>();
+    return dataProvider.workoutHistory.values.expand((sessions) => sessions.map((s) => s.date)).toList();
+  }
   
   @override
   void initState() {
@@ -30,9 +50,7 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
   
   @override
   Widget build(BuildContext context) {
-    final daysSinceStart = DateTime.now().difference(userStartDate).inDays;
-    final weeksSinceStart = (daysSinceStart / 7).floor();
-    
+    final dataProvider = context.watch<FitnessDataProvider>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Progress'),
@@ -50,15 +68,16 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
       body: TabBarView(
         controller: _tabController,
         children: [
-          _buildJourneyTab(daysSinceStart),
-          _buildRecommendationsTab(daysSinceStart, weeksSinceStart),
+          _buildJourneyTab(),
+          _buildRecommendationsTab(),
           _buildWeightProgressTab(),
         ],
       ),
     );
   }
 
-  Widget _buildJourneyTab(int daysSinceStart) {
+  Widget _buildJourneyTab() {
+    final dataProvider = context.watch<FitnessDataProvider>();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(
@@ -95,13 +114,11 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
             ),
           ),
           const SizedBox(height: 20),
-          
           Text(
             'Transformation Milestones',
             style: Theme.of(context).textTheme.titleLarge,
           ),
           const SizedBox(height: 12),
-          
           // Milestones List
           Column(
             children: [
@@ -191,7 +208,8 @@ class _ProgressScreenState extends State<ProgressScreen> with TickerProviderStat
     return 'Transformation';
   }
 
-  Widget _buildRecommendationsTab(int daysSinceStart, int weeksSinceStart) {
+  Widget _buildRecommendationsTab() {
+    final dataProvider = context.watch<FitnessDataProvider>();
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16.0),
       child: Column(

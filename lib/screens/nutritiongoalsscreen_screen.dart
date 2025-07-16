@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 
 class NutritionGoalsScreen extends StatefulWidget {
@@ -10,7 +11,6 @@ class NutritionGoalsScreen extends StatefulWidget {
 }
 
 class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
-  final FitnessDataManager dataManager = FitnessDataManager();
   final _formKey = GlobalKey<FormState>();
   
   late TextEditingController _caloriesController;
@@ -21,7 +21,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
   @override
   void initState() {
     super.initState();
-    final goals = dataManager.nutritionGoals;
+    final goals = context.watch<FitnessDataProvider>().nutritionGoals;
     _caloriesController = TextEditingController(text: goals.calories.toString());
     _proteinController = TextEditingController(text: goals.protein.toString());
     _carbsController = TextEditingController(text: goals.carbs.toString());
@@ -197,7 +197,7 @@ class _NutritionGoalsScreenState extends State<NutritionGoalsScreen> {
         fat: double.parse(_fatController.text),
       );
 
-      dataManager.updateNutritionGoals(newGoals);
+      context.read<FitnessDataProvider>().updateNutritionGoals(newGoals);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Nutrition goals updated!')),

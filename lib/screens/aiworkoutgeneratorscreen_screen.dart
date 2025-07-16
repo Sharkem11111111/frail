@@ -3,11 +3,12 @@ import 'dart:convert';
 import 'dart:async';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 import '../services/notification_service.dart';
 import 'workoutpreviewscreen_screen.dart';
 import 'workoutactivescreen_screen.dart';
+import 'package:provider/provider.dart';
 
 class AIWorkoutGeneratorScreen extends StatefulWidget {
   const AIWorkoutGeneratorScreen({super.key});
@@ -20,10 +21,11 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
   bool _isGenerating = false;
   String _workoutPrompt = '';
   final _promptController = TextEditingController();
+  bool _includeWeightsInPrompt = true; // Toggle for debugging prompt length
 
   @override
   Widget build(BuildContext context) {
-    final dataManager = FitnessDataManager();
+    final dataManager = context.watch<FitnessDataProvider>();
     final availableMuscles = dataManager.getAvailableMuscles();
     final recoveringMuscles = dataManager.getRecoveringMuscles();
 
@@ -126,6 +128,20 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
                 ),
               ),
             ),
+            // Toggle for prompt weights section (debug only)
+            Row(
+              children: [
+                Checkbox(
+                  value: _includeWeightsInPrompt,
+                  onChanged: (val) {
+                    setState(() {
+                      _includeWeightsInPrompt = val ?? true;
+                    });
+                  },
+                ),
+                const Text('Include weights in AI prompt (debug)'),
+              ],
+            ),
           ],
         ),
       ),
@@ -154,17 +170,17 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
 
       final response = await _getAiWorkoutResponse(prompt);
       
-      final dataManager = FitnessDataManager();
+      final dataManager = context.read<FitnessDataProvider>();
       
       if (response.isNotEmpty && dataManager.currentWorkout.isNotEmpty) {
         // Schedule workout reminders if enabled
-        final notificationService = NotificationService();
-        final prefs = await SharedPreferences.getInstance();
-        final workoutRemindersEnabled = prefs.getBool('workout_reminders_enabled') ?? true;
+        // final notificationService = NotificationService();
+        // final prefs = await SharedPreferences.getInstance();
+        // final workoutRemindersEnabled = prefs.getBool('workout_reminders_enabled') ?? true;
         
-        if (workoutRemindersEnabled) {
-          await notificationService.scheduleWorkoutReminders();
-        }
+        // if (workoutRemindersEnabled) {
+        //   await notificationService.scheduleWorkoutReminders();
+        // }
         
         // Store context before async operations
         final currentContext = context;
@@ -196,7 +212,7 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
       final currentContext = context;
       
       // Check if default workout has exercises
-      final dataManager = FitnessDataManager();
+      final dataManager = context.read<FitnessDataProvider>();
       if (dataManager.currentWorkout.isNotEmpty) {
         if (mounted) {
           Navigator.pushReplacement(
@@ -223,11 +239,30 @@ class _AIWorkoutGeneratorScreenState extends State<AIWorkoutGeneratorScreen> {
     const String apiKey = 'AIzaSyDRkbPi5aB5xPWHj49vkWGAThS9XN4Srys';
     final String url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=$apiKey';
     
-    final dataManager = FitnessDataManager();
+    final dataManager = context.read<FitnessDataProvider>();
+    // Build equipment/weights string (optional)
+    String equipmentDetails = '';
+    if (_includeWeightsInPrompt) {
+      equipmentDetails = dataManager.availableEquipment.entries
+          .where((e) => e.value.isAvailable)
+          .map((e) {
+            final weights = e.value.availableWeights;
+            if (weights.isNotEmpty) {
+              return '- ${e.value.name}: ${weights.map((w) => '${w.toInt()} lbs').join(", ")}';
+            } else {
+              return '- ${e.value.name}';
+            }
+          })
+          .join('\n');
+    }
     final String userContext = '''
+USER PROFILE:
+- Weight: ${dataManager.currentWeight > 0 ? '${dataManager.currentWeight} lbs' : 'unknown'}
+- Height: ${dataManager.height > 0 ? '${(dataManager.height ~/ 12)}\'${(dataManager.height % 12).toInt()}\" (${(dataManager.height * 2.54).toStringAsFixed(0)} cm)' : 'unknown'}
+
 USER FITNESS CONTEXT:
 ${dataManager.getMuscleRecoveryStatus()}
-Available equipment: ${dataManager.getAvailableEquipmentNames().join(', ')}
+Available equipment${_includeWeightsInPrompt ? ' and weights' : ''}:${_includeWeightsInPrompt ? '\n$equipmentDetails' : ' ' + dataManager.getAvailableEquipmentNames().join(', ')}
 ${dataManager.getPreferencesForAI()}
 
 TASK: Generate a workout routine based on the user's request: "$prompt"
@@ -235,7 +270,8 @@ TASK: Generate a workout routine based on the user's request: "$prompt"
 REQUIREMENTS:
 - Only use exercises that target available (recovered) muscles
 - Only suggest exercises that can be done with available equipment
-- Include 4-6 exercises with specific sets, reps, and weights
+${_includeWeightsInPrompt ? '- Use only the weights the user has for each equipment (see above)\n' : ''}- Include 4-6 exercises with specific sets, reps, and weights
+- When suggesting weights, take into account the user's weight and height for safe, realistic recommendations
 - Format EXACTLY as: "ExerciseName: sets × reps @ weight"
 - Each exercise on a new line
 - Use "bodyweight" for exercises with no weights
@@ -290,17 +326,35 @@ Please generate exactly 4-6 exercises in this format:''';
           return '';
         }
       } else {
+        // Show detailed error in UI
+        String errorMsg = 'Gemini API Error: ${response.statusCode}\n${response.body}';
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(errorMsg, style: const TextStyle(fontSize: 12)),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 6),
+          ),
+        );
+        print(errorMsg);
         print('HTTP Error: ${response.statusCode} - ${response.body}');
         return '';
       }
     } catch (e) {
+      // Show error in UI
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gemini error: $e', style: const TextStyle(fontSize: 12)),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 6),
+        ),
+      );
       print('Error generating AI workout: $e');
       return '';
     }
   }
 
   void _parseAndApplyAIWorkout(String aiResponse) {
-    final dataManager = FitnessDataManager();
+    final dataManager = context.read<FitnessDataProvider>();
     dataManager.currentWorkout.clear();
 
     print('Parsing AI response: $aiResponse');
@@ -380,8 +434,6 @@ Please generate exactly 4-6 exercises in this format:''';
     } else {
       print('Successfully parsed ${dataManager.currentWorkout.length} exercises');
     }
-
-    dataManager.onWorkoutChanged?.call();
   }
 
   String _inferMuscleTargetsFromName(String exerciseName) {
@@ -409,7 +461,7 @@ Please generate exactly 4-6 exercises in this format:''';
   }
 
   void _generateDefaultWorkout() {
-    final dataManager = FitnessDataManager();
+    final dataManager = context.read<FitnessDataProvider>();
     final availableMuscles = dataManager.getAvailableMuscles();
     
     dataManager.currentWorkout.clear();
@@ -447,6 +499,5 @@ Please generate exactly 4-6 exercises in this format:''';
     }
     
     print('Default workout created with ${dataManager.currentWorkout.length} exercises');
-    dataManager.onWorkoutChanged?.call();
   }
 }

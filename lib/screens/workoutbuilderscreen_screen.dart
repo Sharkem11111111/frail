@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
+import 'package:provider/provider.dart';
 
 class WorkoutBuilderScreen extends StatefulWidget {
   final List<Exercise> availableExercises;
@@ -101,8 +102,8 @@ class _WorkoutBuilderScreenState extends State<WorkoutBuilderScreen> {
                     itemBuilder: (context, index) {
                       final exercise = widget.availableExercises[index];
                       final isSelected = selectedExercises.any((e) => e.name == exercise.name);
-                      final dataManager = FitnessDataManager();
-                      final preferenceScore = dataManager.exercisePreferences[exercise.name] ?? 0;
+                      final dataProvider = context.watch<FitnessDataProvider>();
+                      final preferenceScore = dataProvider.exercisePreferences[exercise.name] ?? 0;
 
                       return Card(
                         margin: const EdgeInsets.only(bottom: 8),
@@ -175,8 +176,8 @@ class _WorkoutBuilderScreenState extends State<WorkoutBuilderScreen> {
       return;
     }
 
-    final dataManager = FitnessDataManager();
-    dataManager.saveWorkout(
+    final dataProvider = context.watch<FitnessDataProvider>();
+    dataProvider.saveWorkout(
       _workoutNameController.text.trim(),
       selectedExercises,
       description: _descriptionController.text.trim(),

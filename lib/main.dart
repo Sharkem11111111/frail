@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 
-import 'data/fitness_data_manager.dart';
 import 'services/notification_service.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 
 // Screen imports
 import 'screens/workoutscreen_screen.dart';
@@ -21,10 +22,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
   // Initialize notification service
-  final notificationService = NotificationService();
-  await notificationService.initialize();
+  // final notificationService = NotificationService();
+  // await notificationService.initialize();
   
-  runApp(const FrailApp());
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => FitnessDataProvider()),
+      ],
+      child: const FrailApp(),
+    ),
+  );
 }
 
 class FrailApp extends StatelessWidget {
@@ -62,7 +70,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  final FitnessDataManager _dataManager = FitnessDataManager();
   
   final List<Widget> _screens = [
     const WorkoutScreen(),
@@ -74,12 +81,6 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData();
-  }
-
-  Future<void> _loadUserData() async {
-    await _dataManager.loadUserData();
-    setState(() {}); // Refresh UI after loading data
   }
 
   @override

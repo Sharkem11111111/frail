@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 import 'workoutactivescreen_screen.dart';
+import 'package:provider/provider.dart';
 
 class UpperBodyWorkoutScreen extends StatefulWidget {
   const UpperBodyWorkoutScreen({super.key});
@@ -11,7 +12,7 @@ class UpperBodyWorkoutScreen extends StatefulWidget {
 }
 
 class _UpperBodyWorkoutScreenState extends State<UpperBodyWorkoutScreen> {
-  final dataManager = FitnessDataManager();
+  FitnessDataProvider get dataProvider => context.watch<FitnessDataProvider>();
   List<Exercise> selectedExercises = [];
 
   @override
@@ -24,7 +25,7 @@ class _UpperBodyWorkoutScreenState extends State<UpperBodyWorkoutScreen> {
     selectedExercises.clear();
     
     // Add favorite upper body exercises if available
-    selectedExercises.addAll(dataManager.upperBodyFavorites.take(3));
+    selectedExercises.addAll(dataProvider.upperBodyFavorites.take(3));
     
     // Fill with default upper body exercises if needed
     if (selectedExercises.length < 4) {
@@ -46,7 +47,7 @@ class _UpperBodyWorkoutScreenState extends State<UpperBodyWorkoutScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final availableMuscles = dataManager.getAvailableMuscles();
+    final availableMuscles = dataProvider.getAvailableMuscles();
     final upperBodyMuscles = ['chest', 'back', 'shoulders', 'biceps', 'triceps', 'forearms'];
     final readyUpperMuscles = availableMuscles.where((m) => upperBodyMuscles.contains(m)).toList();
     
@@ -89,7 +90,7 @@ class _UpperBodyWorkoutScreenState extends State<UpperBodyWorkoutScreen> {
                     ],
                     const SizedBox(height: 8),
                     Text(
-                      'This workout includes ${dataManager.upperBodyFavorites.length} of your favorite upper body exercises.',
+                      'This workout includes ${dataProvider.upperBodyFavorites.length} of your favorite upper body exercises.',
                       style: TextStyle(color: Colors.grey[600]),
                     ),
                   ],
@@ -105,7 +106,7 @@ class _UpperBodyWorkoutScreenState extends State<UpperBodyWorkoutScreen> {
               itemCount: selectedExercises.length,
               itemBuilder: (context, index) {
                 final exercise = selectedExercises[index];
-                final isFavorite = dataManager.upperBodyFavorites.any((e) => e.name == exercise.name);
+                final isFavorite = dataProvider.upperBodyFavorites.any((e) => e.name == exercise.name);
                 
                 return Card(
                   margin: const EdgeInsets.only(bottom: 8),
@@ -166,8 +167,7 @@ class _UpperBodyWorkoutScreenState extends State<UpperBodyWorkoutScreen> {
   }
 
   void _startWorkout() {
-    dataManager.currentWorkout = selectedExercises;
-    dataManager.onWorkoutChanged?.call();
+    dataProvider.currentWorkout = selectedExercises;
     Navigator.pushReplacement(
       context,
       MaterialPageRoute(builder: (context) => const WorkoutActiveScreen()),

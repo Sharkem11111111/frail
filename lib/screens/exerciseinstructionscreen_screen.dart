@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 
 class ExerciseInstructionScreen extends StatefulWidget {
@@ -19,7 +20,6 @@ class ExerciseInstructionScreen extends StatefulWidget {
 }
 
 class _ExerciseInstructionScreenState extends State<ExerciseInstructionScreen> {
-  final dataManager = FitnessDataManager();
   ExerciseInstructions? instructions;
   bool isLoading = true;
 
@@ -33,7 +33,7 @@ class _ExerciseInstructionScreenState extends State<ExerciseInstructionScreen> {
     setState(() => isLoading = true);
     
     try {
-      final loadedInstructions = await dataManager.getExerciseInstructions(widget.exercise.name);
+      final loadedInstructions = await context.read<FitnessDataProvider>().getExerciseInstructions(widget.exercise.name);
       setState(() {
         instructions = loadedInstructions;
         isLoading = false;

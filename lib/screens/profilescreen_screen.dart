@@ -7,8 +7,8 @@ import 'sleepscreen_screen.dart';
 import 'equipmentsettingsscreen_screen.dart';
 import 'gamesmenuscreen_screen.dart';
 import 'notificationsettingsscreen_screen.dart';
-import '../data/fitness_data_manager.dart';
-
+import 'package:frail/providers/fitness_data_provider.dart';
+import 'package:provider/provider.dart';
 
 
 class ProfileScreen extends StatelessWidget {
@@ -21,13 +21,16 @@ class ProfileScreen extends StatelessWidget {
         return AlertDialog(
           title: const Text('Reset App Data'),
           content: const Text(
-            'This will clear all your data including:\n'
+            'Choose your reset option:\n\n'
+            '🔄 **Soft Reset**: Clear all data but keep app settings\n'
+            '🗑️ **Hard Reset**: Complete wipe - like fresh install\n\n'
+            'Both options will clear:\n'
             '• Workout history\n'
             '• Progress tracking\n'
             '• Nutrition data\n'
             '• Equipment settings\n'
             '• Notification preferences\n\n'
-            'This action cannot be undone. Are you sure?',
+            'This action cannot be undone.',
           ),
           actions: [
             TextButton(
@@ -37,12 +40,22 @@ class ProfileScreen extends StatelessWidget {
             TextButton(
               onPressed: () async {
                 Navigator.of(context).pop();
-                await _resetAppData(context);
+                await _resetAppData(context, isHardReset: true); // Always do a full wipe
+              },
+              style: TextButton.styleFrom(
+                foregroundColor: Colors.orange,
+              ),
+              child: const Text('Soft Reset'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _resetAppData(context, isHardReset: true);
               },
               style: TextButton.styleFrom(
                 foregroundColor: Colors.red,
               ),
-              child: const Text('Reset'),
+              child: const Text('Hard Reset'),
             ),
           ],
         );
@@ -50,18 +63,18 @@ class ProfileScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _resetAppData(BuildContext context) async {
+  Future<void> _resetAppData(BuildContext context, {required bool isHardReset}) async {
     try {
       // Show loading indicator
       showDialog(
         context: context,
         barrierDismissible: false,
         builder: (BuildContext context) {
-          return const AlertDialog(
+          return AlertDialog(
             content: Row(
               children: [
                 CircularProgressIndicator(),
-                SizedBox(width: 16),
+                const SizedBox(width: 16),
                 Text('Resetting app data...'),
               ],
             ),
@@ -69,18 +82,18 @@ class ProfileScreen extends StatelessWidget {
         },
       );
 
-      // Reset the data
-      await FitnessDataManager().resetToFirstTimeUser();
+      // Always perform a full wipe
+      await context.read<FitnessDataProvider>().hardResetToFirstTimeUser();
 
       // Close loading dialog
       Navigator.of(context).pop();
 
       // Show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+        SnackBar(
           content: Text('App data reset successfully! You can now start fresh.'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 3),
+          duration: const Duration(seconds: 3),
         ),
       );
 
@@ -104,6 +117,53 @@ class ProfileScreen extends StatelessWidget {
       
       print('Reset error details: $e');
     }
+  }
+
+  void _showManualWipeInstructions(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Manual Wipe Instructions'),
+          content: const SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'If the app reset doesn\'t work, you can manually wipe all data:',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  '📱 iPhone/iPad:\n'
+                  '1. Go to Settings > General > iPhone Storage\n'
+                  '2. Find "Frail" app\n'
+                  '3. Tap "Offload App" or "Delete App"\n'
+                  '4. Reinstall from App Store\n\n'
+                  '🤖 Android:\n'
+                  '1. Go to Settings > Apps > Frail\n'
+                  '2. Tap "Storage & cache"\n'
+                  '3. Tap "Clear Storage" and "Clear Cache"\n'
+                  '4. Or uninstall and reinstall the app\n\n'
+                  '💻 Alternative Method:\n'
+                  '1. Delete the app completely\n'
+                  '2. Restart your device\n'
+                  '3. Reinstall the app fresh',
+                  style: TextStyle(fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Got it'),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   @override
@@ -216,6 +276,13 @@ class ProfileScreen extends StatelessWidget {
               icon: Icons.refresh,
               color: Colors.red,
               onTap: () => _showResetDialog(context),
+            ),
+            ProfileFeatureCard(
+              title: 'Manual Wipe Instructions',
+              subtitle: 'How to completely wipe app data',
+              icon: Icons.help_outline,
+              color: Colors.orange,
+              onTap: () => _showManualWipeInstructions(context),
             ),
           ],
         ),

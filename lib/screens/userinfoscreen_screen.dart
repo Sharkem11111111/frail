@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
+import 'package:provider/provider.dart';
 
 class UserInfoScreen extends StatefulWidget {
   const UserInfoScreen({super.key});
@@ -9,7 +10,7 @@ class UserInfoScreen extends StatefulWidget {
 }
 
 class _UserInfoScreenState extends State<UserInfoScreen> {
-  final FitnessDataManager dataManager = FitnessDataManager();
+  FitnessDataProvider get dataProvider => context.watch<FitnessDataProvider>();
   
   late TextEditingController _usernameController;
   late TextEditingController _currentWeightController;
@@ -30,15 +31,17 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
   @override
   void initState() {
     super.initState();
-    _usernameController = TextEditingController(text: dataManager.username);
+    _usernameController = TextEditingController(
+      text: dataProvider.username.isNotEmpty ? dataProvider.username : ''
+    );
     _currentWeightController = TextEditingController(
-      text: dataManager.currentWeight > 0 ? dataManager.currentWeight.toString() : ''
+      text: dataProvider.currentWeight > 0 ? dataProvider.currentWeight.toString() : ''
     );
     _goalWeightController = TextEditingController(
-      text: dataManager.goalWeight > 0 ? dataManager.goalWeight.toString() : ''
+      text: dataProvider.goalWeight > 0 ? dataProvider.goalWeight.toString() : ''
     );
     // Convert total inches back to feet and inches for display
-    int totalInches = dataManager.height.toInt();
+    int totalInches = dataProvider.height.toInt();
     int feet = totalInches ~/ 12;
     int inches = totalInches % 12;
     
@@ -49,9 +52,8 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
       text: inches > 0 ? inches.toString() : ''
     );
     _ageController = TextEditingController(
-      text: dataManager.age > 0 ? dataManager.age.toString() : ''
+      text: dataProvider.age > 0 ? dataProvider.age.toString() : ''
     );
-    dataManager.onProfileChanged = () => setState(() {});
   }
 
   @override
@@ -105,7 +107,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                     radius: 50,
                     backgroundColor: Colors.white.withOpacity(0.2),
                     child: Text(
-                      dataManager.username.isNotEmpty ? dataManager.username[0].toUpperCase() : 'U',
+                      dataProvider.username.isNotEmpty ? dataProvider.username[0].toUpperCase() : 'U',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 36,
@@ -115,16 +117,16 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    dataManager.username.isNotEmpty ? dataManager.username : 'Your Profile',
+                    dataProvider.username.isNotEmpty ? dataProvider.username : 'Your Profile',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  if (dataManager.getBMI() > 0)
+                  if (dataProvider.getBMI() > 0)
                     Text(
-                      'BMI: ${dataManager.getBMI().toStringAsFixed(1)} (${dataManager.getBMICategory()})',
+                      'BMI: ${dataProvider.getBMI().toStringAsFixed(1)} (${dataProvider.getBMICategory()})',
                       style: const TextStyle(
                         color: Colors.white70,
                         fontSize: 16,
@@ -148,7 +150,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                         'Username',
                         _usernameController,
                         'Enter your name',
-                        onChanged: (value) => dataManager.updateUsername(value),
+                        onChanged: (value) => dataProvider.updateUsername(value),
                       ),
                       _buildNumberField(
                         'Age',
@@ -157,7 +159,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                         suffix: 'years',
                         onChanged: (value) {
                           int? age = int.tryParse(value);
-                          if (age != null) dataManager.updateAge(age);
+                          if (age != null) dataProvider.updateAge(age);
                         },
                       ),
                       _buildHeightField(),
@@ -176,7 +178,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                         suffix: ' lbs',
                         onChanged: (value) {
                           double? weight = double.tryParse(value);
-                          if (weight != null) dataManager.updateWeight(weight);
+                          if (weight != null) dataProvider.updateWeight(weight);
                         },
                       ),
                       _buildNumberField(
@@ -186,22 +188,22 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
                         suffix: ' lbs',
                         onChanged: (value) {
                           double? weight = double.tryParse(value);
-                          if (weight != null) dataManager.updateGoalWeight(weight);
+                          if (weight != null) dataProvider.updateGoalWeight(weight);
                         },
                       ),
                       _buildDropdownField(
                         'Fitness Goal',
-                        dataManager.fitnessGoal,
+                        dataProvider.fitnessGoal,
                         fitnessGoals,
                         onChanged: (value) {
-                          if (value != null) dataManager.updateFitnessGoal(value);
+                          if (value != null) dataProvider.updateFitnessGoal(value);
                         },
                       ),
                     ],
                   ),
 
                   // Progress Summary
-                  if (dataManager.currentWeight > 0)
+                  if (dataProvider.currentWeight > 0)
                     _buildProgressCard(),
                 ],
               ),
@@ -366,7 +368,7 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
     
     // Convert to total inches and update data manager
     double totalInches = (feet * 12 + inches).toDouble();
-    dataManager.updateHeight(totalInches);
+    dataProvider.updateHeight(totalInches);
   }
 
   Widget _buildProgressCard() {
@@ -395,14 +397,14 @@ class _UserInfoScreenState extends State<UserInfoScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _buildStatItem('Current', '${dataManager.currentWeight.toInt()} lbs'),
-                _buildStatItem('Goal', '${dataManager.goalWeight.toInt()} lbs'),
-                _buildStatItem('BMI', dataManager.getBMI().toStringAsFixed(1)),
+                _buildStatItem('Current', '${dataProvider.currentWeight.toInt()} lbs'),
+                _buildStatItem('Goal', '${dataProvider.goalWeight.toInt()} lbs'),
+                _buildStatItem('BMI', dataProvider.getBMI().toStringAsFixed(1)),
               ],
             ),
             const SizedBox(height: 12),
             Text(
-              dataManager.getWeightProgressText(),
+              dataProvider.getWeightProgressText(),
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.w500,

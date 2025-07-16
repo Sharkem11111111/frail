@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 import '../models/fitness_models.dart';
 
 class AddFoodScreen extends StatefulWidget {
@@ -12,7 +13,6 @@ class AddFoodScreen extends StatefulWidget {
 class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
-  final FitnessDataManager dataManager = FitnessDataManager();
   List<FoodItem> searchResults = [];
   bool isSearching = false;
 
@@ -148,9 +148,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateM
   Widget _buildRecentTab() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: dataManager.recentFoods.length,
+      itemCount: context.watch<FitnessDataProvider>().recentFoods.length,
       itemBuilder: (context, index) {
-        final food = dataManager.recentFoods[index];
+        final food = context.watch<FitnessDataProvider>().recentFoods[index];
         return Card(
           child: ListTile(
             leading: CircleAvatar(
@@ -170,9 +170,9 @@ class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateM
   Widget _buildFavoritesTab() {
     return ListView.builder(
       padding: const EdgeInsets.all(16),
-      itemCount: dataManager.favoriteFoods.length,
+      itemCount: context.watch<FitnessDataProvider>().favoriteFoods.length,
       itemBuilder: (context, index) {
-        final food = dataManager.favoriteFoods[index];
+        final food = context.watch<FitnessDataProvider>().favoriteFoods[index];
         return Card(
           child: ListTile(
             leading: CircleAvatar(
@@ -187,7 +187,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateM
                 IconButton(
                   icon: const Icon(Icons.remove_circle_outline, color: Colors.red),
                   onPressed: () {
-                    dataManager.removeFromFavorites(food.name);
+                    context.read<FitnessDataProvider>().removeFromFavorites(food.name);
                     setState(() {});
                   },
                 ),
@@ -202,7 +202,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateM
   }
 
   Widget _buildManualTab() {
-    return _ManualFoodEntry(dataManager: dataManager);
+    return _ManualFoodEntry(dataManager: context.read<FitnessDataProvider>());
   }
 
   void _showServingSizeDialog(FoodItem foodItem) {
@@ -211,7 +211,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateM
       builder: (context) => _ServingSizeDialog(
         foodItem: foodItem,
         onAdd: (foodEntry) {
-          dataManager.addFood(foodEntry);
+          context.read<FitnessDataProvider>().addFood(foodEntry);
           Navigator.pop(context);
           Navigator.pop(context);
           ScaffoldMessenger.of(context).showSnackBar(
@@ -224,7 +224,7 @@ class _AddFoodScreenState extends State<AddFoodScreen> with TickerProviderStateM
 
   void _addRecentFood(FoodEntry food) {
     final newEntry = food.copyWith(timestamp: DateTime.now());
-    dataManager.addFood(newEntry);
+    context.read<FitnessDataProvider>().addFood(newEntry);
     Navigator.pop(context);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Added ${food.name}!')),
@@ -362,7 +362,7 @@ class __ServingSizeDialogState extends State<_ServingSizeDialog> {
 
 // Manual Food Entry Widget
 class _ManualFoodEntry extends StatefulWidget {
-  final FitnessDataManager dataManager;
+  final FitnessDataProvider dataManager;
 
   const _ManualFoodEntry({required this.dataManager});
 
@@ -531,7 +531,7 @@ class __ManualFoodEntryState extends State<_ManualFoodEntry> {
         notes: _notesController.text.isEmpty ? null : _notesController.text,
       );
 
-      widget.dataManager.addFood(foodEntry);
+      context.read<FitnessDataProvider>().addFood(foodEntry);
       Navigator.pop(context);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Added ${foodEntry.name}!')),

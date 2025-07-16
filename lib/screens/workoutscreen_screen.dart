@@ -1,14 +1,24 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
+import 'aiworkoutgeneratorscreen_screen.dart';
+import 'workoutactivescreen_screen.dart';
+import 'lowerbodyworkoutscreen_screen.dart';
+import 'upperbodyworkoutscreen_screen.dart';
+import 'customworkoutscreen_screen.dart';
+import 'rankingscreen_screen.dart';
+import 'caloriescreen_screen.dart';
+import 'sleepscreen_screen.dart';
+import 'historyscreen_screen.dart';
+import 'progressscreen_screen.dart';
+import 'gamesmenuscreen_screen.dart';
+import 'aitrainerchatscreen_screen.dart';
+import 'userinfocard_screen.dart';
+import 'fitnessscoresection_screen.dart';
 import '../widgets/fitnessrankbadge_widget.dart';
 import '../widgets/musclerecoverycard_widget.dart';
 import '../widgets/workoutcard_widget.dart';
-import 'rankingscreen_screen.dart';
-import 'customworkoutscreen_screen.dart';
-import 'upperbodyworkoutscreen_screen.dart';
-import 'lowerbodyworkoutscreen_screen.dart';
-import 'workoutactivescreen_screen.dart';
-import 'aiworkoutgeneratorscreen_screen.dart';
+import '../models/fitness_models.dart';
 
 class WorkoutScreen extends StatefulWidget {
   const WorkoutScreen({super.key});
@@ -18,16 +28,15 @@ class WorkoutScreen extends StatefulWidget {
 }
 
 class _WorkoutScreenState extends State<WorkoutScreen> {
-  final dataManager = FitnessDataManager();
-
   @override
   void initState() {
     super.initState();
-    dataManager.onWorkoutChanged = () => setState(() {});
+    // No singleton callbacks needed with Provider
   }
 
   @override
   Widget build(BuildContext context) {
+    final dataProvider = context.watch<FitnessDataProvider>();
     return Scaffold(
       appBar: AppBar(
         title: const Text('Frail'),
@@ -40,7 +49,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Resume Active Workout Banner
-            if (dataManager.hasActiveWorkout) ...[
+            if (dataProvider.hasActiveWorkout) ...[
               Card(
                 color: Colors.green.withValues(alpha: 0.1),
                 child: InkWell(
@@ -81,7 +90,7 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                                 ),
                               ),
                               Text(
-                                '${dataManager.currentWorkout.length} exercises • In progress',
+                                '${dataProvider.currentWorkout.length} exercises • In progress',
                                 style: TextStyle(
                                   color: Colors.grey[600],
                                   fontSize: 14,
@@ -118,14 +127,14 @@ class _WorkoutScreenState extends State<WorkoutScreen> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              dataManager.hasActiveWorkout 
+                              dataProvider.hasActiveWorkout 
                                 ? 'Keep up the great work!' 
                                 : 'Ready to get strong?',
                               style: Theme.of(context).textTheme.headlineSmall,
                             ),
                             const SizedBox(height: 8),
                             Text(
-                              dataManager.hasActiveWorkout 
+                              dataProvider.hasActiveWorkout 
                                 ? 'Resume your workout or start a new one.'
                                 : 'Choose your workout type and let\'s build some muscle!',
                               style: Theme.of(context).textTheme.bodyMedium?.copyWith(

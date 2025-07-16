@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../data/fitness_data_manager.dart';
+import 'package:provider/provider.dart';
+import 'package:frail/providers/fitness_data_provider.dart';
 
 
 class MuscleRecoveryCard extends StatelessWidget {
@@ -7,7 +8,7 @@ class MuscleRecoveryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dataManager = FitnessDataManager();
+    final dataManager = context.watch<FitnessDataProvider>();
     final availableMuscles = dataManager.getAvailableMuscles();
     final recoveringMuscles = dataManager.getRecoveringMuscles();
 
